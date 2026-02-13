@@ -1,478 +1,1064 @@
 // ============================================================
-// sprites.js - Pixel Art Sprite Definitions & Drawing Utilities
+// sprites.js - Manga Style Sprite Definitions & Drawing Utilities
+// Inspired by 1960s shojo manga (Attack No.1 / Mila, Superstar)
 // ============================================================
 
 const Sprites = (() => {
-    // Color palette (16-bit inspired)
+    // ---- Manga Color Palette (warm monochrome + red accent) ----
     const C = {
-        // Skin
-        skin:       '#f5c6a0',
-        skinShade:  '#d4a57a',
-        // Hair colors
-        hairBrown:  '#5c3317',
-        hairBlack:  '#2a1a0a',
-        hairBlonde: '#d4a937',
-        hairRed:    '#8b3a2a',
-        // Clothing
-        shirtBlue:  '#4a7abc',
-        shirtBlueDk:'#3a5a8c',
-        shirtRed:   '#c04040',
-        shirtRedDk: '#8c2a2a',
-        shirtGreen: '#4a9a5a',
-        shirtGreenDk:'#3a7a4a',
-        shirtYellow:'#d4b040',
-        shirtYellowDk:'#a48a30',
-        shirtWhite: '#e8e0d0',
-        shirtWhiteDk:'#c0b8a8',
-        // Desk & furniture
-        deskTop:    '#c49a6c',
-        deskFront:  '#a07848',
-        deskSide:   '#8a6838',
-        deskLeg:    '#6a5030',
-        chairBack:  '#8a6838',
-        chairSeat:  '#a07848',
-        // Blackboard
-        boardGreen: '#2a5a3a',
-        boardGreenLt:'#3a7a4a',
-        boardFrame: '#6a5030',
-        chalk:      '#e8e8d0',
-        // Classroom
-        floorTile:  '#c8b898',
-        floorTileDk:'#b0a080',
-        wallColor:  '#e8dcc8',
-        wallColorDk:'#d0c4a8',
-        windowBlue: '#88bbdd',
-        windowBlueDk:'#6899bb',
-        windowFrame:'#b0a080',
-        // Note
-        noteWhite:  '#f8f8f0',
-        noteShadow: '#d0d0c0',
-        // UI
-        white:      '#ffffff',
-        black:      '#000000',
-        red:        '#e03030',
-        darkRed:    '#a02020',
-        green:      '#30a030',
-        yellow:     '#f0d020',
-        gray:       '#888888',
-        darkGray:   '#444444',
-        // Teacher
-        teacherDress: '#6040a0',
-        teacherDressDk: '#4a3080',
-        teacherHair: '#5c3317',
-        teacherSkin: '#f5c6a0',
-        teacherSkinDk: '#d4a57a',
-        // Zzz
-        zzzColor:   '#8888cc',
+        // Ink
+        ink:          '#1a1510',
+        inkSoft:      '#3a3530',
+        inkLight:     '#6a6055',
+        // Paper
+        paper:        '#f5f0e0',
+        paperDark:    '#e8e0c8',
+        paperWarm:    '#f0e8d0',
+        // Screentone shades (warm gray)
+        tone1:        '#e0d8c8',
+        tone2:        '#c8c0a8',
+        tone3:        '#a09880',
+        tone4:        '#787060',
+        tone5:        '#504840',
+        // Accent
+        accentRed:    '#c83030',
+        accentPink:   '#e8a8a8',
+        // Functional
+        white:        '#ffffff',
+        black:        '#000000',
+        // Character
+        skin:         '#f0d8c0',
+        skinShade:    '#d8c0a0',
+        blush:        '#e8b0a0',
     };
 
-    // Shirt color sets for students
-    const shirtColors = [
-        { main: C.shirtBlue, dark: C.shirtBlueDk },
-        { main: C.shirtRed, dark: C.shirtRedDk },
-        { main: C.shirtGreen, dark: C.shirtGreenDk },
-        { main: C.shirtYellow, dark: C.shirtYellowDk },
-        { main: C.shirtWhite, dark: C.shirtWhiteDk },
-    ];
+    // ---- Screentone Pattern System ----
+    let patternsCtx = null;
+    const patterns = {};
 
-    const hairColors = [C.hairBrown, C.hairBlack, C.hairBlonde, C.hairRed];
+    function createDotPattern(ctx, dotRadius, spacing, dotColor, bgColor) {
+        const tile = document.createElement('canvas');
+        tile.width = spacing;
+        tile.height = spacing;
+        const tc = tile.getContext('2d');
+        if (bgColor) {
+            tc.fillStyle = bgColor;
+            tc.fillRect(0, 0, spacing, spacing);
+        }
+        tc.fillStyle = dotColor;
+        tc.beginPath();
+        tc.arc(spacing / 2, spacing / 2, dotRadius, 0, Math.PI * 2);
+        tc.fill();
+        return ctx.createPattern(tile, 'repeat');
+    }
 
-    // Deterministic "random" based on grid position
+    function createLinePattern(ctx, lineW, spacing, angle, color, bgColor) {
+        const size = spacing * 2;
+        const tile = document.createElement('canvas');
+        tile.width = size;
+        tile.height = size;
+        const tc = tile.getContext('2d');
+        if (bgColor) {
+            tc.fillStyle = bgColor;
+            tc.fillRect(0, 0, size, size);
+        }
+        tc.strokeStyle = color;
+        tc.lineWidth = lineW;
+        tc.save();
+        tc.translate(size / 2, size / 2);
+        tc.rotate(angle);
+        tc.translate(-size / 2, -size / 2);
+        for (let i = -size; i < size * 2; i += spacing) {
+            tc.beginPath();
+            tc.moveTo(i, -size);
+            tc.lineTo(i, size * 2);
+            tc.stroke();
+        }
+        tc.restore();
+        return ctx.createPattern(tile, 'repeat');
+    }
+
+    function createCrossHatchPattern(ctx, lineW, spacing, color, bgColor) {
+        const tile = document.createElement('canvas');
+        tile.width = spacing;
+        tile.height = spacing;
+        const tc = tile.getContext('2d');
+        if (bgColor) {
+            tc.fillStyle = bgColor;
+            tc.fillRect(0, 0, spacing, spacing);
+        }
+        tc.strokeStyle = color;
+        tc.lineWidth = lineW;
+        tc.beginPath();
+        tc.moveTo(0, 0);
+        tc.lineTo(spacing, spacing);
+        tc.moveTo(spacing, 0);
+        tc.lineTo(0, spacing);
+        tc.stroke();
+        return ctx.createPattern(tile, 'repeat');
+    }
+
+    // Initialize all screentone patterns (call after canvas context is ready)
+    function initPatterns(ctx) {
+        if (patternsCtx === ctx) return;
+        patternsCtx = ctx;
+
+        // Dot screentones at different densities
+        patterns.dotLight   = createDotPattern(ctx, 0.8, 6, C.inkLight, C.paper);
+        patterns.dotMedium  = createDotPattern(ctx, 1.0, 5, C.inkSoft, C.paper);
+        patterns.dotDark    = createDotPattern(ctx, 1.2, 4, C.ink, C.paperDark);
+        patterns.dotVDark   = createDotPattern(ctx, 1.5, 4, C.ink, C.tone3);
+
+        // Line patterns for clothing variety
+        patterns.horzLines  = createLinePattern(ctx, 0.6, 4, 0, C.inkLight, C.paper);
+        patterns.diagLines  = createLinePattern(ctx, 0.6, 5, Math.PI / 4, C.inkSoft, C.paper);
+        patterns.vertLines  = createLinePattern(ctx, 0.6, 4, Math.PI / 2, C.inkLight, C.paper);
+
+        // Cross-hatch
+        patterns.crossLight = createCrossHatchPattern(ctx, 0.4, 6, C.inkLight, C.paper);
+        patterns.crossDark  = createCrossHatchPattern(ctx, 0.5, 5, C.inkSoft, C.paperDark);
+
+        // Wood grain (horizontal lines for desks)
+        patterns.woodGrain  = createLinePattern(ctx, 0.3, 3, 0, C.tone3, C.tone1);
+
+        // Floor
+        patterns.floor      = createLinePattern(ctx, 0.4, 5, Math.PI / 6, C.tone3, C.paperDark);
+
+        // Dark solid for blackboard
+        patterns.boardFill  = createDotPattern(ctx, 1.4, 3.5, C.ink, C.tone5);
+    }
+
+    // Shirt pattern sets for student variety
+    const shirtPatternKeys = ['dotLight', 'horzLines', 'diagLines', 'crossLight', 'dotMedium'];
+    const hairFills = [C.ink, C.tone4, C.tone5, C.ink]; // black, brown-ish, dark, black
+
+    const SPRITE_SCALE = 2;
+
+    // Deterministic appearance from grid position
     function studentAppearance(col, row) {
         const cols = (typeof Grid !== 'undefined' && Grid.COLS) ? Grid.COLS : 5;
         const idx = row * cols + col;
         return {
-            shirt: shirtColors[idx % shirtColors.length],
-            hair: hairColors[(idx * 3 + 1) % hairColors.length],
+            shirtPattern: shirtPatternKeys[idx % shirtPatternKeys.length],
+            hair: hairFills[(idx * 3 + 1) % hairFills.length],
+            hairStyle: idx % 3, // 0 = straight, 1 = wavy, 2 = short
         };
     }
 
-    // Draw a single pixel (scaled block)
-    function drawPixel(ctx, x, y, color, scale) {
-        ctx.fillStyle = color;
-        ctx.fillRect(Math.floor(x), Math.floor(y), scale, scale);
+    // ---- Helper: Set ink stroke style ----
+    function inkStroke(ctx, width) {
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = width || 1.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
     }
 
-    // Fixed pixel scale for all student/desk sprites.
-    // s=2 keeps sprites compact so they fit within their grid cells
-    // without overlapping neighboring rows.
-    const SPRITE_SCALE = 2;
+    // ---- Helper: Rounded rectangle path ----
+    function roundRectPath(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+    }
 
-    // ---- DESK (seen from behind, isometric-ish) ----
-    // Draws a desk+chair unit at (x,y) top-left, fitting in w x h
+    // ================================================================
+    //  DESK (seen from behind, line art with screentone)
+    // ================================================================
     function drawDesk(ctx, x, y, w, h) {
         const s = SPRITE_SCALE;
         const cx = x + w / 2;
 
-        // Chair back
-        ctx.fillStyle = C.chairBack;
-        ctx.fillRect(cx - 7 * s, y + h - 14 * s, 14 * s, 2 * s);
-        // Chair legs
-        ctx.fillStyle = C.deskLeg;
-        ctx.fillRect(cx - 6 * s, y + h - 12 * s, 2 * s, 6 * s);
-        ctx.fillRect(cx + 4 * s, y + h - 12 * s, 2 * s, 6 * s);
-        // Chair seat
-        ctx.fillStyle = C.chairSeat;
-        ctx.fillRect(cx - 7 * s, y + h - 6 * s, 14 * s, 2 * s);
+        // Chair back (thin horizontal bar)
+        inkStroke(ctx, 1.5);
+        ctx.beginPath();
+        ctx.moveTo(cx - 7 * s, y + h - 14 * s);
+        ctx.lineTo(cx + 7 * s, y + h - 14 * s);
+        ctx.stroke();
 
-        // Desk top (flat surface, wider)
-        ctx.fillStyle = C.deskTop;
+        // Chair vertical supports
+        ctx.beginPath();
+        ctx.moveTo(cx - 5 * s, y + h - 14 * s);
+        ctx.lineTo(cx - 5 * s, y + h - 12 * s);
+        ctx.moveTo(cx + 5 * s, y + h - 14 * s);
+        ctx.lineTo(cx + 5 * s, y + h - 12 * s);
+        ctx.stroke();
+
+        // Chair legs
+        inkStroke(ctx, 1);
+        ctx.beginPath();
+        ctx.moveTo(cx - 6 * s, y + h - 12 * s);
+        ctx.lineTo(cx - 6 * s, y + h - 6 * s);
+        ctx.moveTo(cx + 5 * s, y + h - 12 * s);
+        ctx.lineTo(cx + 5 * s, y + h - 6 * s);
+        ctx.stroke();
+
+        // Chair seat
+        ctx.fillStyle = patterns.dotLight || C.tone1;
+        ctx.fillRect(cx - 7 * s, y + h - 6 * s, 14 * s, 2 * s);
+        inkStroke(ctx, 1);
+        ctx.strokeRect(cx - 7 * s, y + h - 6 * s, 14 * s, 2 * s);
+
+        // Desk top surface
+        ctx.fillStyle = patterns.woodGrain || C.tone1;
         ctx.fillRect(cx - 9 * s, y + h - 20 * s, 18 * s, 3 * s);
-        // Desk front face
-        ctx.fillStyle = C.deskFront;
+        inkStroke(ctx, 1.5);
+        ctx.strokeRect(cx - 9 * s, y + h - 20 * s, 18 * s, 3 * s);
+
+        // Desk front panel
+        ctx.fillStyle = patterns.dotMedium || C.tone2;
         ctx.fillRect(cx - 9 * s, y + h - 17 * s, 18 * s, 3 * s);
+        inkStroke(ctx, 1);
+        ctx.strokeRect(cx - 9 * s, y + h - 17 * s, 18 * s, 3 * s);
+
         // Desk legs
-        ctx.fillStyle = C.deskLeg;
-        ctx.fillRect(cx - 8 * s, y + h - 17 * s, 2 * s, 11 * s);
-        ctx.fillRect(cx + 6 * s, y + h - 17 * s, 2 * s, 11 * s);
+        inkStroke(ctx, 1.5);
+        ctx.beginPath();
+        ctx.moveTo(cx - 8 * s, y + h - 17 * s);
+        ctx.lineTo(cx - 8 * s, y + h - 6 * s);
+        ctx.moveTo(cx + 7 * s, y + h - 17 * s);
+        ctx.lineTo(cx + 7 * s, y + h - 6 * s);
+        ctx.stroke();
     }
 
-    // ---- STUDENT (seen from behind, writing) ----
+    // ================================================================
+    //  STUDENT WRITING (back view, manga style)
+    // ================================================================
     function drawStudentWriting(ctx, x, y, w, h, col, row, frame) {
         const s = SPRITE_SCALE;
         const cx = x + w / 2;
-        const { shirt, hair } = studentAppearance(col, row);
-        // Slow animation: changes every ~0.5 seconds at 60fps
+        const app = studentAppearance(col, row);
         const animPhase = Math.floor(frame / 30) % 2;
-        const armOffset = animPhase === 0 ? 0 : s;
+        const armOff = animPhase === 0 ? 0 : s;
 
         // Exercise sheet on desk
-        ctx.fillStyle = C.noteWhite;
+        ctx.fillStyle = C.paper;
         ctx.fillRect(cx - 4 * s, y + h - 19 * s, 8 * s, 5 * s);
-        ctx.fillStyle = '#ccccbb';
-        ctx.fillRect(cx - 3 * s, y + h - 18 * s, 5 * s, s);
-        ctx.fillRect(cx - 3 * s, y + h - 16 * s, 4 * s, s);
+        inkStroke(ctx, 0.5);
+        ctx.strokeRect(cx - 4 * s, y + h - 19 * s, 8 * s, 5 * s);
+        // Pencil lines on paper
+        ctx.strokeStyle = C.inkLight;
+        ctx.lineWidth = 0.5;
+        for (let i = 1; i <= 3; i++) {
+            ctx.beginPath();
+            ctx.moveTo(cx - 3 * s, y + h - (18.5 - i) * s);
+            ctx.lineTo(cx + 2 * s, y + h - (18.5 - i) * s);
+            ctx.stroke();
+        }
 
-        // Body/torso (back of shirt)
-        ctx.fillStyle = shirt.main;
-        ctx.fillRect(cx - 5 * s, y + h - 26 * s, 10 * s, 8 * s);
-        // Shirt shading (shoulders)
-        ctx.fillStyle = shirt.dark;
-        ctx.fillRect(cx - 5 * s, y + h - 26 * s, 2 * s, 8 * s);
-        ctx.fillRect(cx + 3 * s, y + h - 26 * s, 2 * s, 8 * s);
-        // Collar detail
-        ctx.fillStyle = shirt.dark;
-        ctx.fillRect(cx - 2 * s, y + h - 26 * s, 4 * s, s);
+        // Body / torso (curved manga shape)
+        ctx.fillStyle = patterns[app.shirtPattern] || C.tone1;
+        ctx.beginPath();
+        ctx.moveTo(cx - 5 * s, y + h - 18 * s);
+        ctx.lineTo(cx - 5 * s, y + h - 25 * s);
+        ctx.quadraticCurveTo(cx - 5 * s, y + h - 26 * s, cx - 3 * s, y + h - 26 * s);
+        ctx.lineTo(cx + 3 * s, y + h - 26 * s);
+        ctx.quadraticCurveTo(cx + 5 * s, y + h - 26 * s, cx + 5 * s, y + h - 25 * s);
+        ctx.lineTo(cx + 5 * s, y + h - 18 * s);
+        ctx.closePath();
+        ctx.fill();
+        inkStroke(ctx, 1.5);
+        ctx.stroke();
 
-        // Arms (reaching to desk)
-        ctx.fillStyle = shirt.main;
-        ctx.fillRect(cx - 7 * s, y + h - 24 * s, 2 * s, 5 * s);
-        ctx.fillRect(cx + 5 * s, y + h - 24 * s, 2 * s, 5 * s);
-        // Left hand (holding paper)
+        // Collar line (V-neck manga style)
+        inkStroke(ctx, 1);
+        ctx.beginPath();
+        ctx.moveTo(cx - 2 * s, y + h - 26 * s);
+        ctx.lineTo(cx, y + h - 24 * s);
+        ctx.lineTo(cx + 2 * s, y + h - 26 * s);
+        ctx.stroke();
+
+        // Arms reaching to desk
+        inkStroke(ctx, 1.5);
+        // Left arm
+        ctx.beginPath();
+        ctx.moveTo(cx - 5 * s, y + h - 24 * s);
+        ctx.quadraticCurveTo(cx - 7 * s, y + h - 22 * s, cx - 7 * s, y + h - 19 * s);
+        ctx.stroke();
+        // Right arm (animated)
+        ctx.beginPath();
+        ctx.moveTo(cx + 5 * s, y + h - 24 * s);
+        ctx.quadraticCurveTo(cx + 7 * s, y + h - 22 * s, cx + 5 * s + armOff, y + h - 19 * s);
+        ctx.stroke();
+
+        // Hands
         ctx.fillStyle = C.skin;
-        ctx.fillRect(cx - 7 * s, y + h - 19 * s, 3 * s, 2 * s);
-        // Right hand (writing, animated)
+        ctx.beginPath();
+        ctx.arc(cx - 7 * s, y + h - 18.5 * s, 1.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+        inkStroke(ctx, 0.8);
+        ctx.stroke();
         ctx.fillStyle = C.skin;
-        ctx.fillRect(cx + 4 * s + armOffset, y + h - 19 * s, 3 * s, 2 * s);
+        ctx.beginPath();
+        ctx.arc(cx + 5 * s + armOff, y + h - 18.5 * s, 1.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
         // Pencil in right hand
-        ctx.fillStyle = C.yellow;
-        ctx.fillRect(cx + 5 * s + armOffset, y + h - 20 * s, s, 3 * s);
-        ctx.fillStyle = '#333';
-        ctx.fillRect(cx + 5 * s + armOffset, y + h - 20 * s, s, s);
+        inkStroke(ctx, 1);
+        ctx.beginPath();
+        ctx.moveTo(cx + 5 * s + armOff, y + h - 20 * s);
+        ctx.lineTo(cx + 5 * s + armOff + s, y + h - 17 * s);
+        ctx.stroke();
 
-        // Head (back view - mostly hair)
-        ctx.fillStyle = hair;
-        ctx.fillRect(cx - 4 * s, y + h - 33 * s, 8 * s, 7 * s);
         // Neck
         ctx.fillStyle = C.skin;
-        ctx.fillRect(cx - 2 * s, y + h - 26 * s, 4 * s, s);
-        // Ears (skin peeking)
+        ctx.fillRect(cx - 1.5 * s, y + h - 27 * s, 3 * s, 2 * s);
+
+        // Head (oval, back view)
+        ctx.fillStyle = app.hair;
+        ctx.beginPath();
+        ctx.ellipse(cx, y + h - 30 * s, 5 * s, 5.5 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        inkStroke(ctx, 1.5);
+        ctx.stroke();
+
+        // Ears (skin peeking on sides)
         ctx.fillStyle = C.skin;
-        ctx.fillRect(cx - 5 * s, y + h - 30 * s, s, 2 * s);
-        ctx.fillRect(cx + 4 * s, y + h - 30 * s, s, 2 * s);
+        ctx.beginPath();
+        ctx.arc(cx - 5 * s, y + h - 29 * s, 1.2 * s, 0, Math.PI * 2);
+        ctx.fill();
+        inkStroke(ctx, 0.8);
+        ctx.stroke();
+        ctx.fillStyle = C.skin;
+        ctx.beginPath();
+        ctx.arc(cx + 5 * s, y + h - 29 * s, 1.2 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Flowing hair strands (key manga element)
+        inkStroke(ctx, 1);
+        const hairLen = app.hairStyle === 2 ? 3 : (app.hairStyle === 1 ? 7 : 6);
+        for (let i = -2; i <= 2; i++) {
+            ctx.beginPath();
+            ctx.moveTo(cx + i * 2 * s, y + h - 35 * s);
+            if (app.hairStyle === 1) {
+                // Wavy hair
+                ctx.bezierCurveTo(
+                    cx + (i * 2 + 1) * s, y + h - (32) * s,
+                    cx + (i * 2 - 1) * s, y + h - (29) * s,
+                    cx + i * 2.5 * s, y + h - (35 - hairLen) * s + hairLen * s
+                );
+            } else {
+                // Straight flowing
+                ctx.quadraticCurveTo(
+                    cx + i * 2.5 * s, y + h - (30) * s,
+                    cx + i * 2.2 * s, y + h - (35 - hairLen) * s + hairLen * s
+                );
+            }
+            ctx.stroke();
+        }
+
+        // Hair highlight (white streak -- manga shine)
+        ctx.strokeStyle = C.white;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        ctx.moveTo(cx - 1 * s, y + h - 34 * s);
+        ctx.quadraticCurveTo(cx, y + h - 31 * s, cx + s, y + h - 28 * s);
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
     }
 
-    // ---- STUDENT (sleeping) ----
+    // ================================================================
+    //  STUDENT SLEEPING (manga style)
+    // ================================================================
     function drawStudentSleeping(ctx, x, y, w, h, col, row, frame) {
         const s = SPRITE_SCALE;
         const cx = x + w / 2;
-        const { shirt, hair } = studentAppearance(col, row);
+        const app = studentAppearance(col, row);
 
         // Body slumped forward
-        ctx.fillStyle = shirt.main;
-        ctx.fillRect(cx - 5 * s, y + h - 24 * s, 10 * s, 6 * s);
-        ctx.fillStyle = shirt.dark;
-        ctx.fillRect(cx - 5 * s, y + h - 24 * s, 2 * s, 6 * s);
+        ctx.fillStyle = patterns[app.shirtPattern] || C.tone1;
+        ctx.beginPath();
+        ctx.moveTo(cx - 5 * s, y + h - 18 * s);
+        ctx.lineTo(cx - 5 * s, y + h - 23 * s);
+        ctx.quadraticCurveTo(cx, y + h - 25 * s, cx + 5 * s, y + h - 23 * s);
+        ctx.lineTo(cx + 5 * s, y + h - 18 * s);
+        ctx.closePath();
+        ctx.fill();
+        inkStroke(ctx, 1.5);
+        ctx.stroke();
 
         // Arms splayed on desk
-        ctx.fillStyle = shirt.main;
-        ctx.fillRect(cx - 7 * s, y + h - 22 * s, 14 * s, 3 * s);
+        inkStroke(ctx, 1.5);
+        ctx.beginPath();
+        ctx.moveTo(cx - 5 * s, y + h - 22 * s);
+        ctx.quadraticCurveTo(cx - 8 * s, y + h - 20 * s, cx - 8 * s, y + h - 19 * s);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + 5 * s, y + h - 22 * s);
+        ctx.quadraticCurveTo(cx + 8 * s, y + h - 20 * s, cx + 8 * s, y + h - 19 * s);
+        ctx.stroke();
+
+        // Hands
         ctx.fillStyle = C.skin;
-        ctx.fillRect(cx - 8 * s, y + h - 21 * s, 2 * s, 2 * s);
-        ctx.fillRect(cx + 6 * s, y + h - 21 * s, 2 * s, 2 * s);
+        ctx.beginPath();
+        ctx.arc(cx - 8 * s, y + h - 18.5 * s, 1.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+        inkStroke(ctx, 0.8);
+        ctx.stroke();
+        ctx.fillStyle = C.skin;
+        ctx.beginPath();
+        ctx.arc(cx + 8 * s, y + h - 18.5 * s, 1.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
 
-        // Head face-down on desk
-        ctx.fillStyle = hair;
-        ctx.fillRect(cx - 4 * s, y + h - 24 * s, 8 * s, 5 * s);
+        // Head face-down on desk (hair spread)
+        ctx.fillStyle = app.hair;
+        ctx.beginPath();
+        ctx.ellipse(cx, y + h - 22 * s, 6 * s, 4 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        inkStroke(ctx, 1.5);
+        ctx.stroke();
 
-        // Draw the ZZZZ speech bubble above the student
+        // Hair spread detail lines
+        inkStroke(ctx, 0.8);
+        for (let i = -2; i <= 2; i++) {
+            ctx.beginPath();
+            ctx.moveTo(cx + i * 2 * s, y + h - 25 * s);
+            ctx.quadraticCurveTo(cx + i * 3 * s, y + h - 22 * s, cx + i * 3 * s, y + h - 19 * s);
+            ctx.stroke();
+        }
+
+        // ZZZ sleep bubble
         drawSleepBubble(ctx, cx, y + h - 30 * s, frame);
     }
 
-    // ---- SLEEP BUBBLE (ZZZZ speech bubble above sleeping students) ----
+    // ================================================================
+    //  SLEEP BUBBLE (manga cloud style)
+    // ================================================================
     function drawSleepBubble(ctx, x, y, frame) {
         const bob = Math.sin(frame * 0.06) * 2;
-        const bw = 40;
-        const bh = 22;
-        const bx = x - bw / 2;
-        const by = y - bh + bob;
+        const bw = 38;
+        const bh = 20;
+        const bx = x - bw / 2 + 10;
+        const by = y - bh + bob - 4;
 
-        // Bubble background (rounded rect)
-        ctx.fillStyle = C.white;
+        // Cloud-shaped bubble (overlapping circles)
+        ctx.fillStyle = C.paper;
         ctx.beginPath();
-        ctx.moveTo(bx + 4, by);
-        ctx.lineTo(bx + bw - 4, by);
-        ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + 4);
-        ctx.lineTo(bx + bw, by + bh - 4);
-        ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - 4, by + bh);
-        ctx.lineTo(bx + 4, by + bh);
-        ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - 4);
-        ctx.lineTo(bx, by + 4);
-        ctx.quadraticCurveTo(bx, by, bx + 4, by);
-        ctx.closePath();
+        ctx.arc(bx + 8, by + 10, 10, 0, Math.PI * 2);
+        ctx.arc(bx + 20, by + 8, 11, 0, Math.PI * 2);
+        ctx.arc(bx + 30, by + 11, 9, 0, Math.PI * 2);
         ctx.fill();
-
-        // Bubble border
-        ctx.strokeStyle = C.zzzColor;
-        ctx.lineWidth = 1.5;
+        inkStroke(ctx, 1.2);
+        ctx.beginPath();
+        ctx.arc(bx + 8, by + 10, 10, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(bx + 20, by + 8, 11, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(bx + 30, by + 11, 9, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Bubble tail (pointer down)
-        ctx.fillStyle = C.white;
+        // Small trailing circles (cloud tail)
+        ctx.fillStyle = C.paper;
         ctx.beginPath();
-        ctx.moveTo(x - 4, by + bh);
-        ctx.lineTo(x + 4, by + bh);
-        ctx.lineTo(x, by + bh + 6);
-        ctx.closePath();
+        ctx.arc(bx + 2, by + bh + 3, 3, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = C.zzzColor;
-        ctx.beginPath();
-        ctx.moveTo(x - 4, by + bh);
-        ctx.lineTo(x, by + bh + 6);
+        inkStroke(ctx, 0.8);
         ctx.stroke();
+        ctx.fillStyle = C.paper;
         ctx.beginPath();
-        ctx.moveTo(x + 4, by + bh);
-        ctx.lineTo(x, by + bh + 6);
+        ctx.arc(bx - 2, by + bh + 8, 2, 0, Math.PI * 2);
+        ctx.fill();
         ctx.stroke();
 
-        // "ZZZZ" text with animated opacity pulse
+        // "ZZZ" text with brush-like feel
         const pulse = 0.7 + Math.sin(frame * 0.12) * 0.3;
         ctx.globalAlpha = pulse;
-        ctx.fillStyle = C.zzzColor;
-        ctx.font = 'bold 14px monospace';
+        ctx.fillStyle = C.ink;
+        ctx.font = 'bold italic 13px Georgia, serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('ZZZ', x, by + bh / 2);
+        ctx.fillText('Zzz', bx + 19, by + 10);
         ctx.globalAlpha = 1.0;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
     }
 
-    // ---- TEACHER (facing blackboard - back to us) ----
+    // ================================================================
+    //  TEACHER BACK (facing blackboard - manga style)
+    // ================================================================
     function drawTeacherBack(ctx, x, y, w, h, frame) {
         const s = Math.floor(w / 16);
         const cx = x + w / 2;
 
-        // Dress / body
-        ctx.fillStyle = C.teacherDress;
-        ctx.fillRect(cx - 5 * s, y + 6 * s, 10 * s, 12 * s);
-        ctx.fillStyle = C.teacherDressDk;
-        ctx.fillRect(cx - 5 * s, y + 6 * s, 2 * s, 12 * s);
-        ctx.fillRect(cx + 3 * s, y + 6 * s, 2 * s, 12 * s);
-
-        // Skirt flare
-        ctx.fillStyle = C.teacherDress;
-        ctx.fillRect(cx - 6 * s, y + 14 * s, 12 * s, 6 * s);
-
         // Legs
-        ctx.fillStyle = C.teacherSkinDk;
-        ctx.fillRect(cx - 3 * s, y + 20 * s, 2 * s, 4 * s);
-        ctx.fillRect(cx + 1 * s, y + 20 * s, 2 * s, 4 * s);
+        ctx.fillStyle = C.skin;
+        inkStroke(ctx, 1.5);
+        ctx.beginPath();
+        ctx.moveTo(cx - 3 * s, y + 20 * s);
+        ctx.lineTo(cx - 3 * s, y + 24 * s);
+        ctx.lineTo(cx - 1 * s, y + 24 * s);
+        ctx.lineTo(cx - 1 * s, y + 20 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + 1 * s, y + 20 * s);
+        ctx.lineTo(cx + 1 * s, y + 24 * s);
+        ctx.lineTo(cx + 3 * s, y + 24 * s);
+        ctx.lineTo(cx + 3 * s, y + 20 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
 
         // Shoes
-        ctx.fillStyle = C.hairBlack;
-        ctx.fillRect(cx - 3 * s, y + 24 * s, 2 * s, s);
-        ctx.fillRect(cx + 1 * s, y + 24 * s, 2 * s, s);
+        ctx.fillStyle = C.ink;
+        ctx.beginPath();
+        ctx.ellipse(cx - 2 * s, y + 24.5 * s, 2 * s, s * 0.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(cx + 2 * s, y + 24.5 * s, 2 * s, s * 0.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Dress / body (A-line manga teacher dress)
+        ctx.fillStyle = patterns.dotDark || C.tone4;
+        ctx.beginPath();
+        ctx.moveTo(cx - 4 * s, y + 7 * s);
+        ctx.lineTo(cx - 6 * s, y + 20 * s);
+        ctx.lineTo(cx + 6 * s, y + 20 * s);
+        ctx.lineTo(cx + 4 * s, y + 7 * s);
+        ctx.closePath();
+        ctx.fill();
+        inkStroke(ctx, 2);
+        ctx.stroke();
+
+        // Waist belt
+        inkStroke(ctx, 1.5);
+        ctx.beginPath();
+        ctx.moveTo(cx - 4.5 * s, y + 12 * s);
+        ctx.lineTo(cx + 4.5 * s, y + 12 * s);
+        ctx.stroke();
 
         // Arms
         const armAnim = Math.floor(frame / 40) % 2 === 0 ? 0 : s;
-        ctx.fillStyle = C.teacherDress;
-        ctx.fillRect(cx - 7 * s, y + 7 * s, 2 * s, 6 * s);
-        ctx.fillRect(cx + 5 * s, y + 7 * s, 2 * s, 6 * s);
-        // Hands (holding chalk)
-        ctx.fillStyle = C.teacherSkin;
-        ctx.fillRect(cx - 7 * s, y + 4 * s + armAnim, 2 * s, 2 * s);
-        ctx.fillRect(cx + 5 * s, y + 6 * s, 2 * s, 2 * s);
-        // Chalk in hand
-        ctx.fillStyle = C.chalk;
-        ctx.fillRect(cx - 7 * s, y + 3 * s + armAnim, 2 * s, s);
+        inkStroke(ctx, 2);
+        // Left arm (reaching up with chalk)
+        ctx.beginPath();
+        ctx.moveTo(cx - 4 * s, y + 8 * s);
+        ctx.quadraticCurveTo(cx - 8 * s, y + 6 * s, cx - 7 * s, y + 4 * s + armAnim);
+        ctx.stroke();
+        // Right arm (at side)
+        ctx.beginPath();
+        ctx.moveTo(cx + 4 * s, y + 8 * s);
+        ctx.quadraticCurveTo(cx + 7 * s, y + 10 * s, cx + 6 * s, y + 13 * s);
+        ctx.stroke();
 
-        // Hair (back view, long hair)
-        ctx.fillStyle = C.teacherHair;
-        ctx.fillRect(cx - 4 * s, y, 8 * s, 7 * s);
-        ctx.fillRect(cx - 3 * s, y + 7 * s, 6 * s, 3 * s); // hair going down
+        // Hands
+        ctx.fillStyle = C.skin;
+        ctx.beginPath();
+        ctx.arc(cx - 7 * s, y + 4 * s + armAnim, 1.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+        inkStroke(ctx, 1);
+        ctx.stroke();
+        ctx.fillStyle = C.skin;
+        ctx.beginPath();
+        ctx.arc(cx + 6 * s, y + 13 * s, 1.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Chalk
+        ctx.fillStyle = C.paper;
+        inkStroke(ctx, 0.8);
+        ctx.beginPath();
+        ctx.moveTo(cx - 7 * s - s, y + 3 * s + armAnim);
+        ctx.lineTo(cx - 7 * s + s, y + 3 * s + armAnim);
+        ctx.lineTo(cx - 7 * s + 0.5 * s, y + 1.5 * s + armAnim);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Head (back view oval)
+        ctx.fillStyle = C.skin;
+        ctx.beginPath();
+        ctx.ellipse(cx, y + 4 * s, 3.5 * s, 4 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Long flowing hair (signature manga teacher look)
+        ctx.fillStyle = C.ink;
+        ctx.beginPath();
+        ctx.ellipse(cx, y + 3.5 * s, 4 * s, 4.5 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Hair flowing down back
+        ctx.fillStyle = C.ink;
+        ctx.beginPath();
+        ctx.moveTo(cx - 3.5 * s, y + 6 * s);
+        ctx.quadraticCurveTo(cx - 4 * s, y + 12 * s, cx - 2.5 * s, y + 14 * s);
+        ctx.lineTo(cx + 2.5 * s, y + 14 * s);
+        ctx.quadraticCurveTo(cx + 4 * s, y + 12 * s, cx + 3.5 * s, y + 6 * s);
+        ctx.closePath();
+        ctx.fill();
+
+        // Hair strand detail lines
+        ctx.strokeStyle = C.tone5;
+        ctx.lineWidth = 0.8;
+        for (let i = -2; i <= 2; i++) {
+            ctx.beginPath();
+            ctx.moveTo(cx + i * 1.2 * s, y + 1 * s);
+            ctx.bezierCurveTo(
+                cx + i * 1.5 * s, y + 6 * s,
+                cx + i * 1.3 * s, y + 10 * s,
+                cx + i * 1.4 * s, y + 14 * s
+            );
+            ctx.stroke();
+        }
+
+        // Hair outline
+        inkStroke(ctx, 1.5);
+        ctx.beginPath();
+        ctx.ellipse(cx, y + 3.5 * s, 4 * s, 4.5 * s, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Manga hair shine highlight
+        ctx.strokeStyle = C.white;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.25;
+        ctx.beginPath();
+        ctx.moveTo(cx - s, y + 1 * s);
+        ctx.quadraticCurveTo(cx + 0.5 * s, y + 4 * s, cx - 0.5 * s, y + 7 * s);
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
     }
 
-    // ---- TEACHER (facing students - front view) ----
+    // ================================================================
+    //  TEACHER FRONT (facing students - manga shojo style)
+    // ================================================================
     function drawTeacherFront(ctx, x, y, w, h, frame) {
         const s = Math.floor(w / 16);
         const cx = x + w / 2;
 
-        // Dress / body
-        ctx.fillStyle = C.teacherDress;
-        ctx.fillRect(cx - 5 * s, y + 6 * s, 10 * s, 12 * s);
-        ctx.fillStyle = C.teacherDressDk;
-        ctx.fillRect(cx - 5 * s, y + 14 * s, 10 * s, 2 * s);
-
-        // Skirt flare
-        ctx.fillStyle = C.teacherDress;
-        ctx.fillRect(cx - 6 * s, y + 14 * s, 12 * s, 6 * s);
-
         // Legs
-        ctx.fillStyle = C.teacherSkinDk;
-        ctx.fillRect(cx - 3 * s, y + 20 * s, 2 * s, 4 * s);
-        ctx.fillRect(cx + 1 * s, y + 20 * s, 2 * s, 4 * s);
+        ctx.fillStyle = C.skin;
+        inkStroke(ctx, 1.5);
+        ctx.beginPath();
+        ctx.moveTo(cx - 3 * s, y + 20 * s);
+        ctx.lineTo(cx - 3 * s, y + 24 * s);
+        ctx.lineTo(cx - 1 * s, y + 24 * s);
+        ctx.lineTo(cx - 1 * s, y + 20 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + 1 * s, y + 20 * s);
+        ctx.lineTo(cx + 1 * s, y + 24 * s);
+        ctx.lineTo(cx + 3 * s, y + 24 * s);
+        ctx.lineTo(cx + 3 * s, y + 20 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
 
         // Shoes
-        ctx.fillStyle = C.hairBlack;
-        ctx.fillRect(cx - 3 * s, y + 24 * s, 2 * s, s);
-        ctx.fillRect(cx + 1 * s, y + 24 * s, 2 * s, s);
-
-        // Arms crossed / on hips
-        ctx.fillStyle = C.teacherDress;
-        ctx.fillRect(cx - 7 * s, y + 7 * s, 2 * s, 6 * s);
-        ctx.fillRect(cx + 5 * s, y + 7 * s, 2 * s, 6 * s);
-        ctx.fillStyle = C.teacherSkin;
-        ctx.fillRect(cx - 7 * s, y + 12 * s, 2 * s, 2 * s);
-        ctx.fillRect(cx + 5 * s, y + 12 * s, 2 * s, 2 * s);
-
-        // Face
-        ctx.fillStyle = C.teacherSkin;
-        ctx.fillRect(cx - 3 * s, y + 2 * s, 6 * s, 5 * s);
-        // Eyes (stern look)
-        ctx.fillStyle = C.black;
-        ctx.fillRect(cx - 2 * s, y + 3 * s, s, s);
-        ctx.fillRect(cx + 1 * s, y + 3 * s, s, s);
-        // Eyebrows (angry)
-        ctx.fillRect(cx - 2 * s, y + 2 * s, 2 * s, s);
-        ctx.fillRect(cx + 1 * s, y + 2 * s, 2 * s, s);
-        // Mouth
-        ctx.fillStyle = C.darkRed;
-        ctx.fillRect(cx - s, y + 5 * s, 2 * s, s);
-
-        // Hair (front view)
-        ctx.fillStyle = C.teacherHair;
-        ctx.fillRect(cx - 4 * s, y, 8 * s, 3 * s);
-        ctx.fillRect(cx - 4 * s, y + 2 * s, s, 4 * s);
-        ctx.fillRect(cx + 3 * s, y + 2 * s, s, 4 * s);
-    }
-
-    // ---- WARNING BUBBLE (!) ----
-    function drawWarningBubble(ctx, x, y, size, frame) {
-        const pulse = Math.sin(frame * 0.2) * 2;
-        const bx = x - size / 2;
-        const by = y - size - 4 + pulse;
-
-        // Bubble background
-        ctx.fillStyle = C.white;
+        ctx.fillStyle = C.ink;
         ctx.beginPath();
-        ctx.arc(x, by + size * 0.4, size * 0.6, 0, Math.PI * 2);
+        ctx.ellipse(cx - 2 * s, y + 24.5 * s, 2 * s, s * 0.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(cx + 2 * s, y + 24.5 * s, 2 * s, s * 0.8, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Bubble pointer
+        // Dress body (A-line)
+        ctx.fillStyle = patterns.dotDark || C.tone4;
         ctx.beginPath();
-        ctx.moveTo(x - 3, by + size * 0.9);
-        ctx.lineTo(x + 3, by + size * 0.9);
-        ctx.lineTo(x, by + size * 1.3);
+        ctx.moveTo(cx - 4 * s, y + 7 * s);
+        ctx.lineTo(cx - 6 * s, y + 20 * s);
+        ctx.lineTo(cx + 6 * s, y + 20 * s);
+        ctx.lineTo(cx + 4 * s, y + 7 * s);
+        ctx.closePath();
+        ctx.fill();
+        inkStroke(ctx, 2);
+        ctx.stroke();
+
+        // Waist belt
+        inkStroke(ctx, 1.5);
+        ctx.beginPath();
+        ctx.moveTo(cx - 4.5 * s, y + 12 * s);
+        ctx.lineTo(cx + 4.5 * s, y + 12 * s);
+        ctx.stroke();
+
+        // Arms crossed
+        inkStroke(ctx, 2);
+        ctx.beginPath();
+        ctx.moveTo(cx - 4 * s, y + 8 * s);
+        ctx.quadraticCurveTo(cx - 7 * s, y + 10 * s, cx - 5 * s, y + 13 * s);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + 4 * s, y + 8 * s);
+        ctx.quadraticCurveTo(cx + 7 * s, y + 10 * s, cx + 5 * s, y + 13 * s);
+        ctx.stroke();
+
+        // Hands
+        ctx.fillStyle = C.skin;
+        ctx.beginPath();
+        ctx.arc(cx - 5 * s, y + 13 * s, 1.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+        inkStroke(ctx, 1);
+        ctx.stroke();
+        ctx.fillStyle = C.skin;
+        ctx.beginPath();
+        ctx.arc(cx + 5 * s, y + 13 * s, 1.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Neck
+        ctx.fillStyle = C.skin;
+        ctx.fillRect(cx - 1.5 * s, y + 5.5 * s, 3 * s, 2 * s);
+
+        // Face (oval)
+        ctx.fillStyle = C.skin;
+        ctx.beginPath();
+        ctx.ellipse(cx, y + 3.5 * s, 3.5 * s, 4 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        inkStroke(ctx, 1.5);
+        ctx.stroke();
+
+        // ---- BIG MANGA EYES (the centerpiece!) ----
+        drawMangaEye(ctx, cx - 2 * s, y + 3.5 * s, s * 1.6, true, frame);
+        drawMangaEye(ctx, cx + 2 * s, y + 3.5 * s, s * 1.6, false, frame);
+
+        // Eyebrows (stern, angled)
+        inkStroke(ctx, 2);
+        ctx.beginPath();
+        ctx.moveTo(cx - 3.5 * s, y + 1.5 * s);
+        ctx.lineTo(cx - 1 * s, y + 2 * s);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + 3.5 * s, y + 1.5 * s);
+        ctx.lineTo(cx + 1 * s, y + 2 * s);
+        ctx.stroke();
+
+        // Small nose (just a line)
+        inkStroke(ctx, 1);
+        ctx.beginPath();
+        ctx.moveTo(cx, y + 4 * s);
+        ctx.lineTo(cx - 0.3 * s, y + 4.8 * s);
+        ctx.stroke();
+
+        // Mouth (stern thin line)
+        inkStroke(ctx, 1.5);
+        ctx.beginPath();
+        ctx.moveTo(cx - 1.2 * s, y + 5.5 * s);
+        ctx.quadraticCurveTo(cx, y + 5.2 * s, cx + 1.2 * s, y + 5.5 * s);
+        ctx.stroke();
+
+        // Blush marks (diagonal lines on cheeks)
+        ctx.strokeStyle = C.accentPink;
+        ctx.lineWidth = 0.8;
+        ctx.globalAlpha = 0.5;
+        for (let i = 0; i < 3; i++) {
+            ctx.beginPath();
+            ctx.moveTo(cx - 3.5 * s + i * 0.7 * s, y + 4 * s);
+            ctx.lineTo(cx - 3 * s + i * 0.7 * s, y + 5 * s);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(cx + 2 * s + i * 0.7 * s, y + 4 * s);
+            ctx.lineTo(cx + 2.5 * s + i * 0.7 * s, y + 5 * s);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1.0;
+
+        // Hair (front view, framing face)
+        ctx.fillStyle = C.ink;
+        // Top hair mass
+        ctx.beginPath();
+        ctx.ellipse(cx, y + 1.5 * s, 4.5 * s, 3 * s, 0, Math.PI, Math.PI * 2);
+        ctx.fill();
+        // Side hair strands (left)
+        ctx.beginPath();
+        ctx.moveTo(cx - 4 * s, y + 2 * s);
+        ctx.quadraticCurveTo(cx - 5 * s, y + 5 * s, cx - 4.5 * s, y + 8 * s);
+        ctx.lineTo(cx - 3.5 * s, y + 8 * s);
+        ctx.quadraticCurveTo(cx - 3.5 * s, y + 5 * s, cx - 3.5 * s, y + 2 * s);
+        ctx.closePath();
+        ctx.fill();
+        // Side hair strands (right)
+        ctx.beginPath();
+        ctx.moveTo(cx + 4 * s, y + 2 * s);
+        ctx.quadraticCurveTo(cx + 5 * s, y + 5 * s, cx + 4.5 * s, y + 8 * s);
+        ctx.lineTo(cx + 3.5 * s, y + 8 * s);
+        ctx.quadraticCurveTo(cx + 3.5 * s, y + 5 * s, cx + 3.5 * s, y + 2 * s);
         ctx.closePath();
         ctx.fill();
 
-        // Exclamation mark
-        ctx.fillStyle = C.red;
-        ctx.font = `bold ${Math.floor(size * 0.8)}px monospace`;
+        // Hair outline and strand details
+        inkStroke(ctx, 1.5);
+        ctx.beginPath();
+        ctx.ellipse(cx, y + 1.5 * s, 4.5 * s, 3 * s, 0, Math.PI, Math.PI * 2);
+        ctx.stroke();
+
+        // Bangs detail
+        inkStroke(ctx, 1);
+        ctx.beginPath();
+        ctx.moveTo(cx - 2 * s, y + 0 * s);
+        ctx.quadraticCurveTo(cx - 1.5 * s, y + 2.5 * s, cx - 2 * s, y + 2.5 * s);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx, y - 0.5 * s);
+        ctx.quadraticCurveTo(cx + 0.5 * s, y + 2 * s, cx, y + 3 * s);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + 2 * s, y + 0 * s);
+        ctx.quadraticCurveTo(cx + 1.5 * s, y + 2.5 * s, cx + 2 * s, y + 2.5 * s);
+        ctx.stroke();
+
+        // Hair shine
+        ctx.strokeStyle = C.white;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        ctx.arc(cx - s, y + 0.5 * s, 2 * s, -0.3, 0.8);
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+    }
+
+    // ================================================================
+    //  MANGA EYE (reusable big shojo eye)
+    // ================================================================
+    function drawMangaEye(ctx, ex, ey, size, isLeft, frame) {
+        // Outer eye shape (large oval)
+        ctx.fillStyle = C.white;
+        ctx.beginPath();
+        ctx.ellipse(ex, ey, size * 1.1, size * 1.3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        inkStroke(ctx, 1.5);
+        ctx.stroke();
+
+        // Iris (large, takes up most of the eye)
+        ctx.fillStyle = patterns.dotVDark || C.tone4;
+        ctx.beginPath();
+        ctx.ellipse(ex, ey + size * 0.1, size * 0.75, size * 0.9, 0, 0, Math.PI * 2);
+        ctx.fill();
+        inkStroke(ctx, 1);
+        ctx.stroke();
+
+        // Pupil
+        ctx.fillStyle = C.ink;
+        ctx.beginPath();
+        ctx.ellipse(ex, ey + size * 0.15, size * 0.35, size * 0.45, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Star reflection (signature shojo manga highlight)
+        ctx.fillStyle = C.white;
+        const sx = ex + (isLeft ? -size * 0.25 : size * 0.25);
+        const sy = ey - size * 0.2;
+        drawSparkle4pt(ctx, sx, sy, size * 0.35);
+
+        // Small secondary highlight
+        ctx.fillStyle = C.white;
+        ctx.beginPath();
+        ctx.arc(ex + (isLeft ? size * 0.2 : -size * 0.2), ey + size * 0.3, size * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Upper eyelash (bold curved line)
+        inkStroke(ctx, 2);
+        ctx.beginPath();
+        ctx.ellipse(ex, ey - size * 0.1, size * 1.2, size * 0.7, 0, Math.PI, Math.PI * 2);
+        ctx.stroke();
+
+        // Eyelash spikes (2-3 short lines radiating up)
+        inkStroke(ctx, 1.2);
+        const lashDir = isLeft ? -1 : 1;
+        for (let i = 0; i < 3; i++) {
+            const a = Math.PI + (i - 1) * 0.3 + lashDir * 0.2;
+            ctx.beginPath();
+            ctx.moveTo(ex + Math.cos(a) * size * 1.1, ey - size * 0.1 + Math.sin(a) * size * 0.6);
+            ctx.lineTo(
+                ex + Math.cos(a) * size * 1.6,
+                ey - size * 0.1 + Math.sin(a) * size * 1.0
+            );
+            ctx.stroke();
+        }
+    }
+
+    // ================================================================
+    //  WARNING BUBBLE (manga jagged explosion style)
+    // ================================================================
+    function drawWarningBubble(ctx, x, y, size, frame) {
+        const pulse = Math.sin(frame * 0.2) * 2;
+        const by = y - size - 4 + pulse;
+        const r = size * 0.8;
+
+        // Jagged manga explosion shape
+        ctx.fillStyle = C.paper;
+        ctx.beginPath();
+        const spikes = 10;
+        for (let i = 0; i < spikes; i++) {
+            const angle = (i / spikes) * Math.PI * 2 - Math.PI / 2;
+            const outerR = r * (1.0 + (i % 2) * 0.5);
+            ctx.lineTo(x + Math.cos(angle) * outerR, by + r * 0.4 + Math.sin(angle) * outerR);
+        }
+        ctx.closePath();
+        ctx.fill();
+        inkStroke(ctx, 2);
+        ctx.stroke();
+
+        // Tail pointer
+        ctx.fillStyle = C.paper;
+        ctx.beginPath();
+        ctx.moveTo(x - 3, by + r * 1.2);
+        ctx.lineTo(x + 3, by + r * 1.2);
+        ctx.lineTo(x, by + r * 1.7);
+        ctx.closePath();
+        ctx.fill();
+        inkStroke(ctx, 1.5);
+        ctx.beginPath();
+        ctx.moveTo(x - 3, by + r * 1.2);
+        ctx.lineTo(x, by + r * 1.7);
+        ctx.lineTo(x + 3, by + r * 1.2);
+        ctx.stroke();
+
+        // Bold exclamation mark
+        ctx.fillStyle = C.ink;
+        ctx.font = `bold ${Math.floor(size * 0.9)}px 'Bangers', Impact, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('!', x, by + size * 0.4);
+        ctx.fillText('!', x, by + r * 0.4);
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
     }
 
-    // ---- NOTE (cheat sheet) ----
-    // size controls overall scale. Recommend 16-24 for good visibility.
+    // ================================================================
+    //  NOTE (manga-style folded letter)
+    // ================================================================
     function drawNote(ctx, x, y, size) {
         const s = Math.max(1, Math.floor(size / 6));
-        const pw = 8 * s;   // paper width
-        const ph = 6 * s;   // paper height
+        const pw = 8 * s;
+        const ph = 6 * s;
 
-        // Paper shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        // Shadow
+        ctx.fillStyle = 'rgba(26, 21, 16, 0.15)';
         ctx.fillRect(x - pw / 2 + 2, y - ph / 2 + 2, pw, ph);
 
         // Paper
-        ctx.fillStyle = C.noteWhite;
+        ctx.fillStyle = C.paper;
         ctx.fillRect(x - pw / 2, y - ph / 2, pw, ph);
-
-        // Paper border
-        ctx.strokeStyle = '#ccccaa';
-        ctx.lineWidth = 1;
+        inkStroke(ctx, 1.2);
         ctx.strokeRect(x - pw / 2, y - ph / 2, pw, ph);
 
         // Fold corner
-        ctx.fillStyle = C.noteShadow;
+        ctx.fillStyle = C.paperDark;
         const foldS = Math.max(2, s);
-        ctx.fillRect(x + pw / 2 - 2 * foldS, y - ph / 2, 2 * foldS, 2 * foldS);
+        ctx.beginPath();
+        ctx.moveTo(x + pw / 2 - 2 * foldS, y - ph / 2);
+        ctx.lineTo(x + pw / 2, y - ph / 2);
+        ctx.lineTo(x + pw / 2, y - ph / 2 + 2 * foldS);
+        ctx.closePath();
+        ctx.fill();
+        inkStroke(ctx, 0.8);
+        ctx.stroke();
 
-        // Text lines
-        ctx.fillStyle = '#6666aa';
+        // Handwritten-style squiggly lines
+        ctx.strokeStyle = C.inkLight;
+        ctx.lineWidth = 0.8;
         const lineGap = Math.max(2, Math.floor(ph / 5));
         for (let i = 0; i < 3; i++) {
-            const lw = pw * (0.6 + Math.sin(i * 1.5) * 0.2);
-            ctx.fillRect(x - pw / 2 + s, y - ph / 2 + s + (i + 1) * lineGap, lw, Math.max(1, s / 2));
+            const ly = y - ph / 2 + s + (i + 1) * lineGap;
+            const lx = x - pw / 2 + s;
+            const lw = pw * (0.5 + Math.sin(i * 1.5) * 0.15);
+            ctx.beginPath();
+            ctx.moveTo(lx, ly);
+            ctx.quadraticCurveTo(lx + lw * 0.3, ly - 1, lx + lw * 0.5, ly + 0.5);
+            ctx.quadraticCurveTo(lx + lw * 0.7, ly + 1.5, lx + lw, ly);
+            ctx.stroke();
+        }
+
+        // Small heart on the note (manga touch)
+        if (size >= 18) {
+            ctx.fillStyle = C.accentPink;
+            ctx.globalAlpha = 0.6;
+            const hx = x + pw / 2 - 3 * s;
+            const hy = y + ph / 2 - 2 * s;
+            ctx.beginPath();
+            ctx.moveTo(hx, hy + 1);
+            ctx.bezierCurveTo(hx - 2, hy - 2, hx - 4, hy + 1, hx, hy + 3);
+            ctx.bezierCurveTo(hx + 4, hy + 1, hx + 2, hy - 2, hx, hy + 1);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
         }
     }
 
-    // ---- BLACKBOARD ----
+    // ================================================================
+    //  BLACKBOARD (ink outline + dark screentone)
+    // ================================================================
     function drawBlackboard(ctx, x, y, w, h) {
-        // Frame
-        ctx.fillStyle = C.boardFrame;
-        ctx.fillRect(x - 4, y - 4, w + 8, h + 8);
-        // Green board
-        ctx.fillStyle = C.boardGreen;
+        // Outer frame
+        ctx.fillStyle = patterns.woodGrain || C.tone3;
+        ctx.fillRect(x - 5, y - 5, w + 10, h + 10);
+        inkStroke(ctx, 2);
+        ctx.strokeRect(x - 5, y - 5, w + 10, h + 10);
+
+        // Board surface
+        ctx.fillStyle = patterns.boardFill || C.tone5;
         ctx.fillRect(x, y, w, h);
-        // Chalk writing (decorative)
-        ctx.fillStyle = C.chalk;
+        inkStroke(ctx, 1.5);
+        ctx.strokeRect(x, y, w, h);
+
+        // Chalk writing (decorative, white strokes)
+        ctx.strokeStyle = C.paperWarm;
+        ctx.lineWidth = 1.5;
         ctx.globalAlpha = 0.6;
         const lineH = Math.floor(h / 6);
         for (let i = 1; i <= 4; i++) {
             const lw = 20 + Math.sin(i * 2.7) * 40 + 30;
-            ctx.fillRect(x + 15, y + i * lineH, lw, 2);
+            ctx.beginPath();
+            ctx.moveTo(x + 15, y + i * lineH);
+            ctx.quadraticCurveTo(x + 15 + lw * 0.3, y + i * lineH - 2, x + 15 + lw, y + i * lineH + 1);
+            ctx.stroke();
         }
-        // A math formula
+
+        // Math formula
         ctx.globalAlpha = 0.8;
-        ctx.font = `${Math.floor(h / 4)}px monospace`;
-        ctx.fillText('2+2=?', x + w - 80, y + h / 2);
+        ctx.fillStyle = C.paper;
+        ctx.font = `${Math.floor(h / 4)}px Georgia, serif`;
+        ctx.fillText('2+2=?', x + w - 85, y + h / 2 + 2);
         ctx.globalAlpha = 1.0;
 
         // Chalk ledge
-        ctx.fillStyle = C.boardFrame;
-        ctx.fillRect(x - 4, y + h + 4, w + 8, 6);
+        ctx.fillStyle = patterns.woodGrain || C.tone3;
+        ctx.fillRect(x - 5, y + h + 5, w + 10, 6);
+        inkStroke(ctx, 1);
+        ctx.strokeRect(x - 5, y + h + 5, w + 10, 6);
+
         // Chalk pieces
-        ctx.fillStyle = C.chalk;
-        ctx.fillRect(x + 20, y + h + 3, 12, 4);
-        ctx.fillStyle = C.yellow;
-        ctx.fillRect(x + 40, y + h + 3, 8, 4);
+        ctx.fillStyle = C.paper;
+        roundRectPath(ctx, x + 20, y + h + 5, 12, 4, 1);
+        ctx.fill();
+        inkStroke(ctx, 0.5);
+        ctx.stroke();
+        ctx.fillStyle = C.paperWarm;
+        roundRectPath(ctx, x + 40, y + h + 5, 8, 4, 1);
+        ctx.fill();
+        ctx.stroke();
     }
 
-    // ---- NERD INDICATOR (star above head) ----
+    // ================================================================
+    //  NERD INDICATOR (manga sparkle cluster)
+    // ================================================================
     function drawNerdStar(ctx, x, y, size) {
-        ctx.fillStyle = C.yellow;
-        ctx.font = `${size}px monospace`;
-        ctx.textAlign = 'center';
-        ctx.fillText('★', x, y);
-        ctx.textAlign = 'left';
+        ctx.fillStyle = C.ink;
+        // Main sparkle
+        drawSparkle4pt(ctx, x, y, size * 0.5);
+        // Smaller surrounding sparkles
+        ctx.globalAlpha = 0.6;
+        drawSparkle4pt(ctx, x - size * 0.5, y - size * 0.2, size * 0.2);
+        drawSparkle4pt(ctx, x + size * 0.4, y - size * 0.3, size * 0.25);
+        drawSparkle4pt(ctx, x + size * 0.3, y + size * 0.3, size * 0.15);
+        ctx.globalAlpha = 1.0;
     }
 
-    // ---- DUNCE INDICATOR (speech bubble with crying face) ----
+    // ================================================================
+    //  DUNCE MARKER (manga crying face bubble)
+    // ================================================================
     function drawDunceMarker(ctx, x, y, size, frame) {
         const bob = Math.sin(frame * 0.06) * 2;
         const bw = 28;
@@ -480,34 +1066,22 @@ const Sprites = (() => {
         const bx = x - bw / 2;
         const by = y - bh + bob;
 
-        // Bubble background (rounded rect approximation)
-        ctx.fillStyle = C.white;
-        ctx.beginPath();
-        ctx.moveTo(bx + 4, by);
-        ctx.lineTo(bx + bw - 4, by);
-        ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + 4);
-        ctx.lineTo(bx + bw, by + bh - 4);
-        ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - 4, by + bh);
-        ctx.lineTo(bx + 4, by + bh);
-        ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - 4);
-        ctx.lineTo(bx, by + 4);
-        ctx.quadraticCurveTo(bx, by, bx + 4, by);
-        ctx.closePath();
+        // Rounded bubble
+        ctx.fillStyle = C.paper;
+        roundRectPath(ctx, bx, by, bw, bh, 5);
         ctx.fill();
-
-        // Bubble border
-        ctx.strokeStyle = '#aaaaaa';
-        ctx.lineWidth = 1;
+        inkStroke(ctx, 1.2);
         ctx.stroke();
 
-        // Bubble tail (pointer down)
-        ctx.fillStyle = C.white;
+        // Bubble tail
+        ctx.fillStyle = C.paper;
         ctx.beginPath();
         ctx.moveTo(x - 4, by + bh);
         ctx.lineTo(x + 4, by + bh);
         ctx.lineTo(x, by + bh + 7);
         ctx.closePath();
         ctx.fill();
+        inkStroke(ctx, 1);
         ctx.beginPath();
         ctx.moveTo(x - 4, by + bh);
         ctx.lineTo(x, by + bh + 7);
@@ -517,25 +1091,166 @@ const Sprites = (() => {
         ctx.lineTo(x, by + bh + 7);
         ctx.stroke();
 
-        // Crying face emoji text
-        ctx.font = '16px serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('😢', x, by + bh / 2);
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'alphabetic';
+        // Manga crying face (drawn, not emoji)
+        const fcx = x;
+        const fcy = by + bh / 2;
+
+        // Eyes (closed, curved lines - crying squint)
+        inkStroke(ctx, 1.5);
+        ctx.beginPath();
+        ctx.arc(fcx - 5, fcy - 2, 3, 0.2, Math.PI - 0.2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(fcx + 5, fcy - 2, 3, 0.2, Math.PI - 0.2);
+        ctx.stroke();
+
+        // Tear drops
+        ctx.fillStyle = C.inkLight;
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(fcx - 5, fcy + 1);
+        ctx.quadraticCurveTo(fcx - 6, fcy + 5, fcx - 5, fcy + 7);
+        ctx.quadraticCurveTo(fcx - 4, fcy + 5, fcx - 5, fcy + 1);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(fcx + 5, fcy + 1);
+        ctx.quadraticCurveTo(fcx + 4, fcy + 5, fcx + 5, fcy + 7);
+        ctx.quadraticCurveTo(fcx + 6, fcy + 5, fcx + 5, fcy + 1);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+
+        // Mouth (open crying)
+        inkStroke(ctx, 1);
+        ctx.beginPath();
+        ctx.ellipse(fcx, fcy + 5, 2.5, 2, 0, 0, Math.PI * 2);
+        ctx.stroke();
     }
 
-    // ---- HIGHLIGHT (current note holder) ----
+    // ================================================================
+    //  HIGHLIGHT (manga emphasis lines radiating outward)
+    // ================================================================
     function drawHighlight(ctx, x, y, w, h, frame) {
-        const alpha = 0.3 + Math.sin(frame * 0.1) * 0.15;
-        ctx.fillStyle = `rgba(255, 255, 100, ${alpha})`;
-        ctx.fillRect(x, y, w, h);
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        const alpha = 0.25 + Math.sin(frame * 0.1) * 0.1;
+        const count = 12;
+
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = alpha;
+
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const innerR = Math.max(w, h) * 0.35;
+            const outerR = Math.max(w, h) * 0.55;
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR);
+            ctx.lineTo(cx + Math.cos(angle) * outerR, cy + Math.sin(angle) * outerR);
+            ctx.stroke();
+        }
+
+        ctx.globalAlpha = 1.0;
+    }
+
+    // ================================================================
+    //  MANGA EFFECT HELPERS
+    // ================================================================
+
+    // 4-pointed sparkle star
+    function drawSparkle4pt(ctx, sx, sy, size) {
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - size);
+        ctx.lineTo(sx + size * 0.2, sy - size * 0.2);
+        ctx.lineTo(sx + size, sy);
+        ctx.lineTo(sx + size * 0.2, sy + size * 0.2);
+        ctx.lineTo(sx, sy + size);
+        ctx.lineTo(sx - size * 0.2, sy + size * 0.2);
+        ctx.lineTo(sx - size, sy);
+        ctx.lineTo(sx - size * 0.2, sy - size * 0.2);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // Speed lines radiating from center
+    function drawSpeedLines(ctx, cx, cy, innerR, outerR, count, alpha, lineW) {
+        ctx.save();
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = lineW || 1;
+        ctx.globalAlpha = alpha || 0.3;
+
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2 + (i * 0.618); // golden-ratio spacing for natural feel
+            const iR = innerR + Math.sin(i * 3.7) * innerR * 0.3;
+            const oR = outerR + Math.sin(i * 2.3) * outerR * 0.15;
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(angle) * iR, cy + Math.sin(angle) * iR);
+            ctx.lineTo(cx + Math.cos(angle) * oR, cy + Math.sin(angle) * oR);
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+
+    // Animated sparkles / flower petals
+    function drawSparkles(ctx, x, y, size, frame, count) {
+        const n = count || 5;
+        for (let i = 0; i < n; i++) {
+            const angle = (i / n) * Math.PI * 2 + frame * 0.02;
+            const dist = size * (0.5 + Math.sin(frame * 0.03 + i * 1.5) * 0.3);
+            const sx = x + Math.cos(angle) * dist;
+            const sy = y + Math.sin(angle) * dist;
+            const sz = size * 0.1 * (0.6 + Math.sin(frame * 0.05 + i) * 0.4);
+
+            ctx.fillStyle = C.ink;
+            ctx.globalAlpha = 0.3 + Math.sin(frame * 0.06 + i * 0.8) * 0.2;
+            drawSparkle4pt(ctx, sx, sy, sz);
+        }
+        ctx.globalAlpha = 1.0;
+    }
+
+    // Simple flower decoration (5 petals)
+    function drawFlower(ctx, x, y, size, alpha) {
+        ctx.globalAlpha = alpha || 0.4;
+        ctx.fillStyle = C.accentPink;
+        for (let i = 0; i < 5; i++) {
+            const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+            ctx.beginPath();
+            ctx.ellipse(
+                x + Math.cos(a) * size * 0.5,
+                y + Math.sin(a) * size * 0.5,
+                size * 0.4, size * 0.25,
+                a, 0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+        // Center
+        ctx.fillStyle = C.paperWarm;
+        ctx.beginPath();
+        ctx.arc(x, y, size * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+    }
+
+    // Motion trail for note in transit
+    function drawMotionTrail(ctx, x, y, dx, dy, size) {
+        ctx.strokeStyle = C.inkLight;
+        ctx.lineWidth = 0.8;
+        ctx.globalAlpha = 0.3;
+        for (let i = 1; i <= 4; i++) {
+            const tx = x - dx * i * 4;
+            const ty = y - dy * i * 4;
+            ctx.beginPath();
+            ctx.moveTo(tx - size * 0.3, ty);
+            ctx.lineTo(tx + size * 0.3, ty);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1.0;
     }
 
     return {
         C,
-        drawPixel,
+        patterns,
+        initPatterns,
         drawDesk,
         drawStudentWriting,
         drawStudentSleeping,
@@ -548,5 +1263,13 @@ const Sprites = (() => {
         drawDunceMarker,
         drawHighlight,
         studentAppearance,
+        // New manga effects
+        drawSpeedLines,
+        drawSparkles,
+        drawSparkle4pt,
+        drawFlower,
+        drawMotionTrail,
+        drawMangaEye,
+        roundRectPath,
     };
 })();

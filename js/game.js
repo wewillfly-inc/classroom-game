@@ -280,21 +280,18 @@ const Game = (() => {
         }
     }
 
-    // Draw subtle arrow indicators for valid moves
+    // Draw manga-style ink arrow indicators for valid moves
     function drawDirectionHints(col, row) {
         const ctx = Renderer.getCtx();
         const center = Renderer.getCellCenter(col, row);
         const grid = Grid.getGrid();
-
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.font = '16px monospace';
-        ctx.textAlign = 'center';
+        const C = Sprites.C;
 
         const dirs = [
-            { dc: 0, dr: -1, char: '▲', ox: 0, oy: -30 },
-            { dc: 0, dr: 1, char: '▼', ox: 0, oy: 35 },
-            { dc: -1, dr: 0, char: '◄', ox: -50, oy: 2 },
-            { dc: 1, dr: 0, char: '►', ox: 50, oy: 2 },
+            { dc: 0, dr: -1, ox: 0, oy: -30, angle: -Math.PI / 2 },
+            { dc: 0, dr: 1, ox: 0, oy: 30, angle: Math.PI / 2 },
+            { dc: -1, dr: 0, ox: -45, oy: 0, angle: Math.PI },
+            { dc: 1, dr: 0, ox: 45, oy: 0, angle: 0 },
         ];
 
         for (const d of dirs) {
@@ -302,12 +299,32 @@ const Game = (() => {
             const nr = row + d.dr;
             if (nc >= 0 && nc < Grid.COLS && nr >= 0 && nr < Grid.ROWS) {
                 if (grid[nr][nc].state === 'writing') {
-                    ctx.fillText(d.char, center.x + d.ox, center.y + d.oy);
+                    const ax = center.x + d.ox;
+                    const ay = center.y + d.oy;
+                    // Draw ink arrow
+                    ctx.save();
+                    ctx.translate(ax, ay);
+                    ctx.rotate(d.angle);
+                    ctx.strokeStyle = C.ink;
+                    ctx.lineWidth = 1.5;
+                    ctx.lineCap = 'round';
+                    ctx.globalAlpha = 0.35;
+                    // Arrow shaft
+                    ctx.beginPath();
+                    ctx.moveTo(-6, 0);
+                    ctx.lineTo(6, 0);
+                    ctx.stroke();
+                    // Arrow head
+                    ctx.beginPath();
+                    ctx.moveTo(3, -3);
+                    ctx.lineTo(7, 0);
+                    ctx.lineTo(3, 3);
+                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                    ctx.restore();
                 }
             }
         }
-
-        ctx.textAlign = 'left';
     }
 
     function getState() { return state; }

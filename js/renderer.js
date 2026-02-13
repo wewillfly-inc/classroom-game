@@ -1,5 +1,6 @@
 // ============================================================
-// renderer.js - Classroom Scene Renderer
+// renderer.js - Manga Style Classroom Scene Renderer
+// Inspired by 1960s shojo manga (Attack No.1 / Mila, Superstar)
 // ============================================================
 
 const Renderer = (() => {
@@ -26,27 +27,30 @@ const Renderer = (() => {
     let scale = 1;
     let offsetX = 0, offsetY = 0;
 
+    // Manga fonts
+    const FONT_TITLE = "'Bangers', Impact, sans-serif";
+    const FONT_BODY = "Georgia, 'Times New Roman', serif";
+    const FONT_UI = "'Segoe UI', Arial, sans-serif";
+
     function init(canvasEl) {
         canvas = canvasEl;
         ctx = canvas.getContext('2d');
+        // Initialize screentone patterns
+        Sprites.initPatterns(ctx);
         resize();
         window.addEventListener('resize', resize);
     }
 
-    // Recalculate grid layout for a given grid size
     function setGridSize(cols, rows) {
         GRID_COLS = cols;
         GRID_ROWS = rows;
 
-        // Available area for the grid
-        const maxGridW = GAME_W - 140; // 70px margin each side
-        const maxGridH = GAME_H - 195; // 175 top + 20 bottom
+        const maxGridW = GAME_W - 140;
+        const maxGridH = GAME_H - 195;
 
-        // Compute cell size to fit, capped at a nice sprite-friendly max
         CELL_W = Math.min(120, Math.floor(maxGridW / cols));
         CELL_H = Math.min(80, Math.floor(maxGridH / rows));
 
-        // Center the grid
         GRID_START_X = Math.floor((GAME_W - cols * CELL_W) / 2);
         GRID_START_Y = 175;
     }
@@ -74,11 +78,10 @@ const Renderer = (() => {
         offsetX = (windowW - w) / 2;
         offsetY = (windowH - h) / 2;
 
-        // Disable smoothing for pixel art
-        ctx.imageSmoothingEnabled = false;
+        // Smooth lines for manga (not pixel art)
+        ctx.imageSmoothingEnabled = true;
     }
 
-    // Get the pixel position of a grid cell (top-left of the cell area)
     function getCellPos(col, row) {
         return {
             x: GRID_START_X + col * CELL_W,
@@ -86,7 +89,6 @@ const Renderer = (() => {
         };
     }
 
-    // Get the center of a grid cell
     function getCellCenter(col, row) {
         const pos = getCellPos(col, row);
         return {
@@ -95,109 +97,215 @@ const Renderer = (() => {
         };
     }
 
-    // ---- Background: floor, walls, windows ----
+    // ================================================================
+    //  BACKGROUND (manga style classroom)
+    // ================================================================
     function drawBackground() {
-        // Floor
-        ctx.fillStyle = Sprites.C.floorTile;
+        const C = Sprites.C;
+        const P = Sprites.patterns;
+
+        // Paper base
+        ctx.fillStyle = C.paper;
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-        // Floor tile pattern
-        ctx.fillStyle = Sprites.C.floorTileDk;
-        for (let ty = 0; ty < GAME_H; ty += 40) {
-            for (let tx = 0; tx < GAME_W; tx += 40) {
-                if ((tx / 40 + ty / 40) % 2 === 0) {
-                    ctx.fillRect(tx, ty, 40, 40);
-                }
-            }
+        // Floor with screentone pattern
+        ctx.fillStyle = P.floor || C.paperDark;
+        ctx.fillRect(0, 150, GAME_W, GAME_H - 150);
+
+        // Floor board lines (horizontal, evenly spaced)
+        ctx.strokeStyle = C.tone2;
+        ctx.lineWidth = 0.5;
+        for (let fy = 160; fy < GAME_H; fy += 30) {
+            ctx.beginPath();
+            ctx.moveTo(0, fy);
+            ctx.lineTo(GAME_W, fy);
+            ctx.stroke();
         }
 
-        // Back wall (where blackboard is)
-        ctx.fillStyle = Sprites.C.wallColor;
+        // Back wall
+        ctx.fillStyle = C.paper;
         ctx.fillRect(0, 0, GAME_W, 150);
-        // Wall base line
-        ctx.fillStyle = Sprites.C.wallColorDk;
-        ctx.fillRect(0, 145, GAME_W, 5);
-        // Wainscoting
-        ctx.fillStyle = Sprites.C.deskFront;
-        ctx.fillRect(0, 130, GAME_W, 15);
 
-        // Left wall hint (perspective)
-        ctx.fillStyle = Sprites.C.wallColorDk;
-        ctx.fillRect(0, 0, 8, GAME_H);
+        // Wall-floor border (bold ink line)
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(0, 150);
+        ctx.lineTo(GAME_W, 150);
+        ctx.stroke();
 
-        // Right wall hint
-        ctx.fillRect(GAME_W - 8, 0, 8, GAME_H);
+        // Wainscoting (light screentone strip)
+        ctx.fillStyle = P.dotLight || C.tone1;
+        ctx.fillRect(0, 130, GAME_W, 20);
+        ctx.strokeStyle = C.inkSoft;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, 130);
+        ctx.lineTo(GAME_W, 130);
+        ctx.stroke();
 
-        // Windows on the left wall
+        // Side walls (ink lines)
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, GAME_H);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(GAME_W, 0);
+        ctx.lineTo(GAME_W, GAME_H);
+        ctx.stroke();
+
+        // Left wall strip
+        ctx.fillStyle = P.dotLight || C.tone1;
+        ctx.fillRect(0, 0, 10, GAME_H);
+        ctx.strokeStyle = C.inkSoft;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(10, 0);
+        ctx.lineTo(10, GAME_H);
+        ctx.stroke();
+
+        // Right wall strip
+        ctx.fillStyle = P.dotLight || C.tone1;
+        ctx.fillRect(GAME_W - 10, 0, 10, GAME_H);
+        ctx.strokeStyle = C.inkSoft;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(GAME_W - 10, 0);
+        ctx.lineTo(GAME_W - 10, GAME_H);
+        ctx.stroke();
+
+        // Windows on left wall
         for (let wy = 180; wy < 500; wy += 140) {
-            // Window frame
-            ctx.fillStyle = Sprites.C.windowFrame;
-            ctx.fillRect(10, wy, 50, 80);
-            // Glass
-            ctx.fillStyle = Sprites.C.windowBlue;
-            ctx.fillRect(14, wy + 4, 42, 72);
-            // Cross divider
-            ctx.fillStyle = Sprites.C.windowFrame;
-            ctx.fillRect(14, wy + 38, 42, 4);
-            ctx.fillRect(33, wy + 4, 4, 72);
-            // Sky highlight
-            ctx.fillStyle = Sprites.C.windowBlueDk;
-            ctx.fillRect(14, wy + 42, 42, 34);
+            drawMangaWindow(12, wy, 48, 75);
         }
 
         // Windows on right wall
         for (let wy = 180; wy < 500; wy += 140) {
-            ctx.fillStyle = Sprites.C.windowFrame;
-            ctx.fillRect(GAME_W - 60, wy, 50, 80);
-            ctx.fillStyle = Sprites.C.windowBlue;
-            ctx.fillRect(GAME_W - 56, wy + 4, 42, 72);
-            ctx.fillStyle = Sprites.C.windowFrame;
-            ctx.fillRect(GAME_W - 56, wy + 38, 42, 4);
-            ctx.fillRect(GAME_W - 37, wy + 4, 4, 72);
-            ctx.fillStyle = Sprites.C.windowBlueDk;
-            ctx.fillRect(GAME_W - 56, wy + 42, 42, 34);
+            drawMangaWindow(GAME_W - 60, wy, 48, 75);
         }
 
-        // Clock on wall
-        const clockX = GAME_W - 120;
-        const clockY = 40;
-        ctx.fillStyle = Sprites.C.white;
-        ctx.beginPath();
-        ctx.arc(clockX, clockY, 18, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = Sprites.C.black;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        // Clock hands
-        ctx.beginPath();
-        ctx.moveTo(clockX, clockY);
-        ctx.lineTo(clockX, clockY - 12);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(clockX, clockY);
-        ctx.lineTo(clockX + 8, clockY + 3);
-        ctx.stroke();
+        // Clock on wall (manga ink style)
+        drawMangaClock(GAME_W - 120, 40);
 
-        // Poster on wall (left side)
-        ctx.fillStyle = '#e8d080';
-        ctx.fillRect(80, 30, 50, 65);
-        ctx.strokeStyle = Sprites.C.deskFront;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(80, 30, 50, 65);
-        ctx.fillStyle = Sprites.C.red;
-        ctx.font = '10px monospace';
-        ctx.fillText('ABC', 90, 60);
-        ctx.fillStyle = Sprites.C.shirtBlue;
-        ctx.fillText('123', 90, 78);
+        // Poster on wall (manga style)
+        drawMangaPoster(80, 30, 50, 65);
     }
 
-    // ---- Blackboard ----
+    // Manga-style window
+    function drawMangaWindow(x, y, w, h) {
+        const C = Sprites.C;
+        const P = Sprites.patterns;
+
+        // Window glass with light screentone
+        ctx.fillStyle = P.dotLight || C.tone1;
+        ctx.fillRect(x, y, w, h);
+
+        // Sky highlight (upper portion lighter)
+        ctx.fillStyle = C.paper;
+        ctx.globalAlpha = 0.4;
+        ctx.fillRect(x, y, w, h * 0.4);
+        ctx.globalAlpha = 1.0;
+
+        // Frame
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+
+        // Cross divider
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x, y + h / 2);
+        ctx.lineTo(x + w, y + h / 2);
+        ctx.moveTo(x + w / 2, y);
+        ctx.lineTo(x + w / 2, y + h);
+        ctx.stroke();
+
+        // Light reflection (diagonal line)
+        ctx.strokeStyle = C.white;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        ctx.moveTo(x + 4, y + 4);
+        ctx.lineTo(x + 12, y + 20);
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+    }
+
+    // Manga-style clock
+    function drawMangaClock(cx, cy) {
+        const C = Sprites.C;
+
+        // Clock face
+        ctx.fillStyle = C.paper;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Hour marks (small lines)
+        for (let i = 0; i < 12; i++) {
+            const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(a) * 14, cy + Math.sin(a) * 14);
+            ctx.lineTo(cx + Math.cos(a) * 16, cy + Math.sin(a) * 16);
+            ctx.stroke();
+        }
+
+        // Hands
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx, cy - 12);
+        ctx.stroke();
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + 8, cy + 3);
+        ctx.stroke();
+
+        // Center dot
+        ctx.fillStyle = C.ink;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Manga-style wall poster
+    function drawMangaPoster(x, y, w, h) {
+        const C = Sprites.C;
+
+        ctx.fillStyle = C.paperWarm;
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x, y, w, h);
+
+        // Decorative flower on poster
+        Sprites.drawFlower(ctx, x + w / 2, y + 22, 8, 0.5);
+
+        // Text lines
+        ctx.fillStyle = C.ink;
+        ctx.font = `10px ${FONT_BODY}`;
+        ctx.fillText('ABC', x + 10, y + 48);
+        ctx.fillText('123', x + 10, y + 60);
+    }
+
+    // ================================================================
+    //  BLACKBOARD
+    // ================================================================
     function drawBlackboard() {
         const bx = (GAME_W - BOARD_W) / 2;
         Sprites.drawBlackboard(ctx, bx, BOARD_Y, BOARD_W, BOARD_H);
     }
 
-    // ---- Teacher ----
+    // ================================================================
+    //  TEACHER
+    // ================================================================
     function drawTeacher(teacherState, frame) {
         const tx = (GAME_W - TEACHER_W) / 2;
         const ty = 45;
@@ -208,48 +316,54 @@ const Renderer = (() => {
             Sprites.drawTeacherFront(ctx, tx, ty, TEACHER_W, TEACHER_H, frame);
         }
 
-        // Warning bubble
         if (teacherState === 'warning') {
             Sprites.drawWarningBubble(ctx, GAME_W / 2, ty - 5, 24, frame);
         }
     }
 
-    // ---- Grid of desks + students ----
+    // ================================================================
+    //  GRID (desks + students)
+    // ================================================================
     function drawGrid(grid, noteCol, noteRow, frame) {
         for (let row = 0; row < GRID_ROWS; row++) {
             for (let col = 0; col < GRID_COLS; col++) {
                 const pos = getCellPos(col, row);
                 const cell = grid[row][col];
 
-                // Draw desk always
                 Sprites.drawDesk(ctx, pos.x, pos.y, CELL_W, CELL_H);
 
-                // Draw student based on state
                 if (cell.state === 'writing') {
                     Sprites.drawStudentWriting(ctx, pos.x, pos.y, CELL_W, CELL_H, col, row, frame);
                 } else if (cell.state === 'sleeping') {
                     Sprites.drawStudentSleeping(ctx, pos.x, pos.y, CELL_W, CELL_H, col, row, frame);
                 }
-                // 'empty' = just the desk with a visible empty indicator
+
                 if (cell.state === 'empty') {
-                    // Draw a subtle "empty" indicator on the chair
-                    ctx.fillStyle = 'rgba(0,0,0,0.08)';
-                    ctx.fillRect(pos.x + CELL_W / 2 - 12, pos.y + CELL_H - 24, 24, 16);
+                    // Manga-style empty indicator: small X on chair
+                    ctx.strokeStyle = Sprites.C.inkLight;
+                    ctx.lineWidth = 1;
+                    ctx.globalAlpha = 0.3;
+                    const ecx = pos.x + CELL_W / 2;
+                    const ecy = pos.y + CELL_H - 18;
+                    ctx.beginPath();
+                    ctx.moveTo(ecx - 6, ecy - 4);
+                    ctx.lineTo(ecx + 6, ecy + 4);
+                    ctx.moveTo(ecx + 6, ecy - 4);
+                    ctx.lineTo(ecx - 6, ecy + 4);
+                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
                 }
 
-                // Nerd star (above the student's head)
                 if (cell.isNerd) {
                     const center = getCellCenter(col, row);
                     Sprites.drawNerdStar(ctx, center.x, pos.y + 10, 18);
                 }
 
-                // Dunce marker (crying bubble above the student's head)
                 if (cell.isDunce) {
                     const center = getCellCenter(col, row);
                     Sprites.drawDunceMarker(ctx, center.x, pos.y + 12, 14, frame);
                 }
 
-                // Highlight current note holder (glow around the desk area)
                 if (col === noteCol && row === noteRow) {
                     const hx = pos.x + CELL_W / 2 - 22;
                     const hy = pos.y + CELL_H - 44;
@@ -259,31 +373,39 @@ const Renderer = (() => {
         }
     }
 
-    // ---- Note in transit animation ----
+    // ================================================================
+    //  NOTE IN TRANSIT (with manga speed lines)
+    // ================================================================
     function drawNoteInTransit(fromCol, fromRow, toCol, toRow, progress, frame) {
         const from = getCellCenter(fromCol, fromRow);
         const to = getCellCenter(toCol, toRow);
 
-        // Lerp position
         const nx = from.x + (to.x - from.x) * progress;
         const ny = from.y + (to.y - from.y) * progress;
 
-        // Arc upward for a "toss" effect
         const arcHeight = -30;
         const arc = arcHeight * Math.sin(progress * Math.PI);
         const noteY = ny + arc;
 
-        // Shadow on the ground
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        // Motion trail (manga speed lines behind the note)
+        const dx = (to.x - from.x);
+        const dy = (to.y - from.y);
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        Sprites.drawMotionTrail(ctx, nx, noteY - 15, dx / len, dy / len, 22);
+
+        // Shadow on ground
+        ctx.fillStyle = 'rgba(26, 21, 16, 0.15)';
         ctx.beginPath();
         ctx.ellipse(nx, ny + 10, 8, 3, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw the note (large when in flight for visibility)
+        // The note itself
         Sprites.drawNote(ctx, nx, noteY - 15, 22);
     }
 
-    // ---- Note sitting on desk (when held by a student) ----
+    // ================================================================
+    //  NOTE ON DESK
+    // ================================================================
     function drawNoteOnDesk(col, row) {
         const pos = getCellPos(col, row);
         const cx = pos.x + CELL_W / 2 + 18;
@@ -291,34 +413,64 @@ const Renderer = (() => {
         Sprites.drawNote(ctx, cx, cy, 18);
     }
 
-    // ---- Timer ----
+    // ================================================================
+    //  TIMER (manga ink style)
+    // ================================================================
     function drawTimer(timeLeft, maxTime) {
-        const x = GAME_W - 100;
-        const y = 20;
+        const C = Sprites.C;
+        const x = GAME_W - 105;
+        const y = 15;
         const ratio = timeLeft / maxTime;
 
-        // Background
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(x - 5, y - 5, 95, 35);
+        // Background panel
+        ctx.fillStyle = C.paper;
+        Sprites.roundRectPath(ctx, x - 5, y - 5, 100, 38, 4);
+        ctx.fill();
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
         // Timer text
-        ctx.fillStyle = timeLeft <= 10 ? Sprites.C.red : Sprites.C.white;
-        ctx.font = 'bold 20px monospace';
+        ctx.fillStyle = timeLeft <= 10 ? C.accentRed : C.ink;
+        ctx.font = `bold 20px ${FONT_UI}`;
         ctx.textAlign = 'right';
         const secs = Math.ceil(timeLeft);
         ctx.fillText(secs + 's', GAME_W - 15, y + 18);
 
-        // Timer bar
+        // Timer bar outline
         const barW = 70;
-        ctx.fillStyle = Sprites.C.darkGray;
-        ctx.fillRect(x, y + 25, barW, 4);
-        ctx.fillStyle = ratio > 0.3 ? Sprites.C.green : Sprites.C.red;
-        ctx.fillRect(x, y + 25, barW * ratio, 4);
+        ctx.fillStyle = C.paper;
+        ctx.fillRect(x, y + 25, barW, 5);
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y + 25, barW, 5);
+
+        // Timer bar fill
+        if (ratio > 0.3) {
+            ctx.fillStyle = C.ink;
+        } else {
+            ctx.fillStyle = C.accentRed;
+        }
+        ctx.fillRect(x + 1, y + 26, (barW - 2) * ratio, 3);
+
+        // Low time warning: manga sweat drop
+        if (timeLeft <= 10) {
+            ctx.fillStyle = C.inkLight;
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(x - 12, y + 5);
+            ctx.quadraticCurveTo(x - 15, y + 15, x - 12, y + 20);
+            ctx.quadraticCurveTo(x - 9, y + 15, x - 12, y + 5);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
 
         ctx.textAlign = 'left';
     }
 
-    // ---- Pixel-art flag helpers ----
+    // ================================================================
+    //  PIXEL-ART FLAG HELPERS (kept functional, drawn with ink outlines)
+    // ================================================================
     function drawFlagItaly(ctx, x, y, w, h) {
         const sw = Math.floor(w / 3);
         ctx.fillStyle = '#009246';
@@ -330,17 +482,12 @@ const Renderer = (() => {
     }
 
     function drawFlagUK(ctx, x, y, w, h) {
-        // Blue background
         ctx.fillStyle = '#012169';
         ctx.fillRect(x, y, w, h);
-
-        // Clip to flag bounds so diagonals don't overflow
         ctx.save();
         ctx.beginPath();
         ctx.rect(x, y, w, h);
         ctx.clip();
-
-        // White diagonals (St Andrew's cross)
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 6;
         ctx.beginPath();
@@ -349,8 +496,6 @@ const Renderer = (() => {
         ctx.moveTo(x + w, y);
         ctx.lineTo(x, y + h);
         ctx.stroke();
-
-        // Red diagonals (thinner, on top)
         ctx.strokeStyle = '#C8102E';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -359,15 +504,10 @@ const Renderer = (() => {
         ctx.moveTo(x + w, y);
         ctx.lineTo(x, y + h);
         ctx.stroke();
-
         ctx.restore();
-
-        // White cross (St George's cross, wide)
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(x, y + Math.floor(h / 2) - 4, w, 8);
         ctx.fillRect(x + Math.floor(w / 2) - 5, y, 10, h);
-
-        // Red cross (narrower, on top)
         ctx.fillStyle = '#C8102E';
         ctx.fillRect(x, y + Math.floor(h / 2) - 2, w, 4);
         ctx.fillRect(x + Math.floor(w / 2) - 3, y, 6, h);
@@ -383,25 +523,68 @@ const Renderer = (() => {
         ctx.fillRect(x, y + sh * 2, w, h - sh * 2);
     }
 
-    // ---- Title Screen ----
+    // ================================================================
+    //  MANGA PANEL BORDER (reusable helper)
+    // ================================================================
+    function drawMangaPanel(x, y, w, h, lineW) {
+        ctx.strokeStyle = Sprites.C.ink;
+        ctx.lineWidth = lineW || 3;
+        ctx.strokeRect(x, y, w, h);
+    }
+
+    // ================================================================
+    //  TITLE SCREEN (manga style)
+    // ================================================================
     function drawTitleScreen(frame) {
-        // Darken background
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        const C = Sprites.C;
+
+        // Overlay with screentone feel
+        ctx.fillStyle = 'rgba(245, 240, 224, 0.85)';
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
+        // Manga panel border
+        drawMangaPanel(20, 20, GAME_W - 40, GAME_H - 40, 4);
+        drawMangaPanel(25, 25, GAME_W - 50, GAME_H - 50, 1.5);
+
+        // Speed lines behind title area
+        Sprites.drawSpeedLines(ctx, GAME_W / 2, 170, 30, 180, 40, 0.08, 1);
+
+        // Decorative flowers
+        Sprites.drawFlower(ctx, 100, 160, 12, 0.3);
+        Sprites.drawFlower(ctx, GAME_W - 100, 160, 10, 0.3);
+        Sprites.drawFlower(ctx, 150, 200, 8, 0.2);
+        Sprites.drawFlower(ctx, GAME_W - 150, 200, 8, 0.2);
+
         // Title
-        ctx.fillStyle = Sprites.C.yellow;
-        ctx.font = 'bold 36px monospace';
+        ctx.fillStyle = C.ink;
+        ctx.font = `42px ${FONT_TITLE}`;
         ctx.textAlign = 'center';
+        // Shadow
+        ctx.globalAlpha = 0.1;
+        ctx.fillText(I18n.t('title'), GAME_W / 2 + 2, 182);
+        ctx.globalAlpha = 1.0;
         ctx.fillText(I18n.t('title'), GAME_W / 2, 180);
 
+        // Underline decoration
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(GAME_W / 2 - 150, 190);
+        ctx.lineTo(GAME_W / 2 + 150, 190);
+        ctx.stroke();
+
+        // Sparkles around title
+        Sprites.drawSparkle4pt(ctx, GAME_W / 2 - 170, 170, 5);
+        Sprites.drawSparkle4pt(ctx, GAME_W / 2 + 170, 170, 5);
+
         // Subtitle
-        ctx.fillStyle = Sprites.C.white;
-        ctx.font = '16px monospace';
-        ctx.fillText(I18n.t('subtitle'), GAME_W / 2, 220);
+        ctx.fillStyle = C.inkSoft;
+        ctx.font = `italic 16px ${FONT_BODY}`;
+        ctx.fillText(I18n.t('subtitle'), GAME_W / 2, 218);
 
         // Instructions
-        ctx.font = '14px monospace';
+        ctx.fillStyle = C.ink;
+        ctx.font = `14px ${FONT_BODY}`;
         const instructions = [
             I18n.t('instr1'),
             I18n.t('instr2'),
@@ -411,13 +594,13 @@ const Renderer = (() => {
             '',
             I18n.t('instr5'),
         ];
-        let iy = 270;
+        let iy = 262;
         for (const line of instructions) {
             ctx.fillText(line, GAME_W / 2, iy);
             iy += 22;
         }
 
-        // Language selector: pixel-art flags (Italy, UK, Germany)
+        // Language selector flags
         const flagW = 42, flagH = 28;
         const langY = 455;
         const current = I18n.languages.indexOf(I18n.getLanguage());
@@ -427,257 +610,422 @@ const Renderer = (() => {
             const fx = langX[i] - flagW / 2;
             const fy = langY - flagH / 2;
             drawFlagFns[i](ctx, fx, fy, flagW, flagH);
-            // Dark outline on all flags
-            ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-            ctx.lineWidth = 1;
+            // Ink outline
+            ctx.strokeStyle = C.ink;
+            ctx.lineWidth = 1.5;
             ctx.strokeRect(fx, fy, flagW, flagH);
-            // Yellow highlight on selected flag
+            // Selected: bold border
             if (i === current) {
-                ctx.strokeStyle = Sprites.C.yellow;
+                ctx.strokeStyle = C.ink;
                 ctx.lineWidth = 3;
-                ctx.strokeRect(fx - 2, fy - 2, flagW + 4, flagH + 4);
+                ctx.strokeRect(fx - 3, fy - 3, flagW + 6, flagH + 6);
+                // Sparkles on selected
+                ctx.fillStyle = C.ink;
+                Sprites.drawSparkle4pt(ctx, fx - 8, fy - 8, 4);
+                Sprites.drawSparkle4pt(ctx, fx + flagW + 8, fy - 8, 4);
             }
         }
         ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.font = '12px monospace';
-        ctx.fillText('← →', GAME_W / 2, langY + flagH / 2 + 16);
+        ctx.fillStyle = C.inkLight;
+        ctx.font = `12px ${FONT_UI}`;
+        ctx.fillText('\u2190 \u2192', GAME_W / 2, langY + flagH / 2 + 16);
 
         // Start prompt (blinking)
         if (Math.floor(frame / 30) % 2 === 0) {
-            ctx.fillStyle = Sprites.C.yellow;
-            ctx.font = 'bold 20px monospace';
+            ctx.fillStyle = C.ink;
+            ctx.font = `bold 22px ${FONT_TITLE}`;
             ctx.fillText(I18n.t('pressSpaceContinue'), GAME_W / 2, 530);
         }
 
         ctx.textAlign = 'left';
     }
 
-    // ---- Settings / Difficulty Selection Screen ----
+    // ================================================================
+    //  SETTINGS SCREEN (manga panel style)
+    // ================================================================
     function drawSettingsScreen(settingsRow, gridChoice, timeChoice, sleepChoice, frame) {
-        // Darken background
-        ctx.fillStyle = 'rgba(0,0,0,0.8)';
+        const C = Sprites.C;
+
+        // Overlay
+        ctx.fillStyle = 'rgba(245, 240, 224, 0.92)';
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
+        // Manga panel border
+        drawMangaPanel(20, 20, GAME_W - 40, GAME_H - 40, 4);
+
         // Title
-        ctx.fillStyle = Sprites.C.yellow;
-        ctx.font = 'bold 30px monospace';
+        ctx.fillStyle = C.ink;
+        ctx.font = `34px ${FONT_TITLE}`;
         ctx.textAlign = 'center';
-        ctx.fillText(I18n.t('chooseDifficulty'), GAME_W / 2, 80);
+        ctx.fillText(I18n.t('chooseDifficulty'), GAME_W / 2, 75);
 
-        // ---- Grid size row ----
+        // Underline
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(GAME_W / 2 - 180, 82);
+        ctx.lineTo(GAME_W / 2 + 180, 82);
+        ctx.stroke();
+
+        // Grid size row
         const gridLabels = ['3 x 4', '5 x 4', '5 x 5'];
-        const gridDescriptions = [I18n.t('gridEasy'), I18n.t('gridMedium'), I18n.t('gridHard')];
-        const rowY1 = 160;
-
-        ctx.fillStyle = settingsRow === 0 ? Sprites.C.yellow : Sprites.C.gray;
-        ctx.font = 'bold 16px monospace';
+        const gridDescs = [I18n.t('gridEasy'), I18n.t('gridMedium'), I18n.t('gridHard')];
+        const rowY1 = 155;
+        ctx.fillStyle = settingsRow === 0 ? C.ink : C.inkLight;
+        ctx.font = `bold 16px ${FONT_UI}`;
         ctx.fillText(I18n.t('grid'), GAME_W / 2, rowY1 - 22);
+        drawOptionRow(gridLabels, gridDescs, gridChoice, rowY1, settingsRow === 0, frame);
 
-        drawOptionRow(gridLabels, gridDescriptions, gridChoice, rowY1, settingsRow === 0, frame);
-
-        // ---- Time row ----
+        // Time row
         const timeLabels = ['20s', '40s', '60s'];
-        const timeDescriptions = [I18n.t('timeChallenge'), I18n.t('timeNormal'), I18n.t('timeRelaxed')];
-        const rowY2 = 295;
-
-        ctx.fillStyle = settingsRow === 1 ? Sprites.C.yellow : Sprites.C.gray;
-        ctx.font = 'bold 16px monospace';
+        const timeDescs = [I18n.t('timeChallenge'), I18n.t('timeNormal'), I18n.t('timeRelaxed')];
+        const rowY2 = 290;
+        ctx.fillStyle = settingsRow === 1 ? C.ink : C.inkLight;
+        ctx.font = `bold 16px ${FONT_UI}`;
         ctx.fillText(I18n.t('time'), GAME_W / 2, rowY2 - 22);
+        drawOptionRow(timeLabels, timeDescs, timeChoice, rowY2, settingsRow === 1, frame);
 
-        drawOptionRow(timeLabels, timeDescriptions, timeChoice, rowY2, settingsRow === 1, frame);
-
-        // ---- Sleepers row ----
+        // Sleepers row
         const sleepLabels = ['3', '5', '7'];
-        const sleepDescriptions = [I18n.t('sleepFew'), I18n.t('sleepMedium'), I18n.t('sleepMany')];
-        const rowY3 = 430;
-
-        ctx.fillStyle = settingsRow === 2 ? Sprites.C.yellow : Sprites.C.gray;
-        ctx.font = 'bold 16px monospace';
+        const sleepDescs = [I18n.t('sleepFew'), I18n.t('sleepMedium'), I18n.t('sleepMany')];
+        const rowY3 = 425;
+        ctx.fillStyle = settingsRow === 2 ? C.ink : C.inkLight;
+        ctx.font = `bold 16px ${FONT_UI}`;
         ctx.fillText(I18n.t('sleepers'), GAME_W / 2, rowY3 - 22);
-
-        drawOptionRow(sleepLabels, sleepDescriptions, sleepChoice, rowY3, settingsRow === 2, frame);
+        drawOptionRow(sleepLabels, sleepDescs, sleepChoice, rowY3, settingsRow === 2, frame);
 
         // Navigation hint
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.font = '13px monospace';
+        ctx.fillStyle = C.inkLight;
+        ctx.font = `13px ${FONT_UI}`;
         ctx.textAlign = 'center';
-        ctx.fillText(I18n.t('navHint'), GAME_W / 2, 510);
+        ctx.fillText(I18n.t('navHint'), GAME_W / 2, 505);
 
-        // Start prompt (blinking)
+        // Start prompt
         if (Math.floor(frame / 30) % 2 === 0) {
-            ctx.fillStyle = Sprites.C.yellow;
-            ctx.font = 'bold 20px monospace';
-            ctx.fillText(I18n.t('pressSpacePlay'), GAME_W / 2, 555);
+            ctx.fillStyle = C.ink;
+            ctx.font = `bold 22px ${FONT_TITLE}`;
+            ctx.fillText(I18n.t('pressSpacePlay'), GAME_W / 2, 550);
         }
 
         ctx.textAlign = 'left';
     }
 
-    // Helper: draw a row of 3 selectable options
+    // Helper: option row with manga panel boxes
     function drawOptionRow(labels, descriptions, selected, y, isActiveRow, frame) {
+        const C = Sprites.C;
         const spacing = 200;
         const startX = GAME_W / 2 - spacing;
 
         for (let i = 0; i < 3; i++) {
             const cx = startX + i * spacing;
             const isSelected = (i === selected);
-
-            // Box
             const boxW = 140;
             const boxH = 70;
             const bx = cx - boxW / 2;
             const by = y - boxH / 2;
 
             if (isSelected && isActiveRow) {
-                // Selected + active row: bright border with pulse
-                const pulse = Math.sin(frame * 0.1) * 0.15 + 0.85;
-                ctx.fillStyle = `rgba(240, 208, 32, ${0.2 * pulse})`;
+                // Active selected: bold manga border with screentone fill
+                ctx.fillStyle = Sprites.patterns.dotLight || C.tone1;
                 ctx.fillRect(bx - 3, by - 3, boxW + 6, boxH + 6);
-                ctx.strokeStyle = Sprites.C.yellow;
+                ctx.strokeStyle = C.ink;
                 ctx.lineWidth = 3;
                 ctx.strokeRect(bx - 3, by - 3, boxW + 6, boxH + 6);
+                // Sparkles on corners
+                ctx.fillStyle = C.ink;
+                Sprites.drawSparkle4pt(ctx, bx - 8, by - 8, 4);
+                Sprites.drawSparkle4pt(ctx, bx + boxW + 8, by - 8, 4);
             } else if (isSelected) {
-                // Selected but not active row: dimmer highlight
-                ctx.fillStyle = 'rgba(240, 208, 32, 0.1)';
+                // Selected but not active
+                ctx.fillStyle = C.paperDark;
                 ctx.fillRect(bx, by, boxW, boxH);
-                ctx.strokeStyle = 'rgba(240, 208, 32, 0.5)';
+                ctx.strokeStyle = C.ink;
                 ctx.lineWidth = 2;
                 ctx.strokeRect(bx, by, boxW, boxH);
             } else {
                 // Not selected
-                ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                ctx.fillStyle = C.paper;
                 ctx.fillRect(bx, by, boxW, boxH);
-                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                ctx.strokeStyle = C.inkLight;
                 ctx.lineWidth = 1;
                 ctx.strokeRect(bx, by, boxW, boxH);
             }
 
-            // Label text
-            ctx.fillStyle = isSelected ? Sprites.C.white : Sprites.C.gray;
-            ctx.font = isSelected ? 'bold 22px monospace' : '20px monospace';
+            // Label
+            ctx.fillStyle = isSelected ? C.ink : C.inkLight;
+            ctx.font = isSelected ? `bold 22px ${FONT_UI}` : `20px ${FONT_UI}`;
             ctx.textAlign = 'center';
             ctx.fillText(labels[i], cx, y + 2);
 
-            // Description below
-            ctx.fillStyle = isSelected ? Sprites.C.yellow : 'rgba(255,255,255,0.3)';
-            ctx.font = '12px monospace';
+            // Description
+            ctx.fillStyle = isSelected ? C.inkSoft : C.inkLight;
+            ctx.font = `12px ${FONT_BODY}`;
             ctx.fillText(descriptions[i], cx, y + 22);
         }
 
-        // Draw arrow indicators for active row
+        // Arrow indicators for active row
         if (isActiveRow) {
             const leftX = startX - spacing / 2 - 10;
             const rightX = startX + 2 * spacing + spacing / 2 + 10;
-            ctx.fillStyle = Sprites.C.yellow;
-            ctx.font = '20px monospace';
+            ctx.fillStyle = C.ink;
+            ctx.font = `20px ${FONT_UI}`;
             ctx.textAlign = 'center';
             if (Math.floor(frame / 20) % 2 === 0) {
-                ctx.fillText('◄', leftX, y + 4);
-                ctx.fillText('►', rightX, y + 4);
+                ctx.fillText('\u25C4', leftX, y + 4);
+                ctx.fillText('\u25BA', rightX, y + 4);
             }
         }
 
         ctx.textAlign = 'left';
     }
 
-    // ---- Game Over Screen ----
+    // ================================================================
+    //  GAME OVER SCREEN (dramatic manga style)
+    // ================================================================
     function drawGameOverScreen(reason, frame) {
-        ctx.fillStyle = 'rgba(100,0,0,0.75)';
+        const C = Sprites.C;
+
+        // Dark overlay with vignette effect
+        ctx.fillStyle = 'rgba(245, 240, 224, 0.8)';
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-        ctx.fillStyle = Sprites.C.red;
-        ctx.font = 'bold 48px monospace';
+        // Speed lines covering the screen (dramatic manga reveal)
+        Sprites.drawSpeedLines(ctx, GAME_W / 2, 240, 40, 400, 60, 0.12, 1.5);
+
+        // Manga panel border
+        drawMangaPanel(40, 100, GAME_W - 80, 300, 5);
+
+        // Inner panel
+        ctx.fillStyle = C.paper;
+        ctx.fillRect(45, 105, GAME_W - 90, 290);
+
+        // Red accent strip at top of panel
+        ctx.fillStyle = C.accentRed;
+        ctx.globalAlpha = 0.15;
+        ctx.fillRect(45, 105, GAME_W - 90, 290);
+        ctx.globalAlpha = 1.0;
+
+        // Title text
+        ctx.fillStyle = C.ink;
+        ctx.font = `52px ${FONT_TITLE}`;
         ctx.textAlign = 'center';
+        // Shadow
+        ctx.globalAlpha = 0.1;
+        ctx.fillText(I18n.t('caught'), GAME_W / 2 + 3, 242);
+        ctx.globalAlpha = 1.0;
         ctx.fillText(I18n.t('caught'), GAME_W / 2, 240);
 
-        ctx.fillStyle = Sprites.C.white;
-        ctx.font = '18px monospace';
+        // Underline burst
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(GAME_W / 2 - 120, 250);
+        ctx.lineTo(GAME_W / 2 + 120, 250);
+        ctx.stroke();
+
+        // Reason text
+        ctx.fillStyle = C.inkSoft;
+        ctx.font = `18px ${FONT_BODY}`;
         if (reason === 'caught') {
             ctx.fillText(I18n.t('caughtReasonTeacher'), GAME_W / 2, 290);
         } else {
             ctx.fillText(I18n.t('caughtReasonTime'), GAME_W / 2, 290);
         }
 
+        // Manga anger marks (cross marks in corners)
+        drawAngerMark(ctx, GAME_W / 2 - 160, 180, 10);
+        drawAngerMark(ctx, GAME_W / 2 + 160, 180, 10);
+
+        // Retry prompt
         if (Math.floor(frame / 30) % 2 === 0) {
-            ctx.fillStyle = Sprites.C.yellow;
-            ctx.font = 'bold 18px monospace';
-            ctx.fillText(I18n.t('pressSpaceRetry'), GAME_W / 2, 400);
+            ctx.fillStyle = C.ink;
+            ctx.font = `bold 20px ${FONT_TITLE}`;
+            ctx.fillText(I18n.t('pressSpaceRetry'), GAME_W / 2, 370);
         }
 
         ctx.textAlign = 'left';
     }
 
-    // ---- Win Screen ----
+    // Manga anger mark (cross/vein mark)
+    function drawAngerMark(ctx, x, y, size) {
+        ctx.strokeStyle = Sprites.C.accentRed;
+        ctx.lineWidth = 2.5;
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(x - size, y - size * 0.3);
+        ctx.lineTo(x + size, y + size * 0.3);
+        ctx.moveTo(x + size * 0.3, y - size);
+        ctx.lineTo(x - size * 0.3, y + size);
+        ctx.moveTo(x - size * 0.8, y + size * 0.6);
+        ctx.lineTo(x + size * 0.8, y - size * 0.6);
+        ctx.moveTo(x - size * 0.6, y - size * 0.8);
+        ctx.lineTo(x + size * 0.6, y + size * 0.8);
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+    }
+
+    // ================================================================
+    //  WIN SCREEN (manga celebration style)
+    // ================================================================
     function drawWinScreen(timeLeft, frame) {
-        ctx.fillStyle = 'rgba(0,80,0,0.75)';
+        const C = Sprites.C;
+
+        // Light overlay
+        ctx.fillStyle = 'rgba(245, 240, 224, 0.85)';
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-        ctx.fillStyle = Sprites.C.yellow;
-        ctx.font = 'bold 48px monospace';
+        // Radial light burst (manga revelation effect)
+        Sprites.drawSpeedLines(ctx, GAME_W / 2, 220, 20, 350, 50, 0.06, 0.8);
+
+        // Manga panel
+        drawMangaPanel(40, 80, GAME_W - 80, 340, 5);
+        ctx.fillStyle = C.paper;
+        ctx.fillRect(45, 85, GAME_W - 90, 330);
+
+        // Decorative flowers scattered around
+        Sprites.drawFlower(ctx, 120, 130, 15, 0.4);
+        Sprites.drawFlower(ctx, GAME_W - 120, 130, 12, 0.35);
+        Sprites.drawFlower(ctx, 100, 350, 10, 0.3);
+        Sprites.drawFlower(ctx, GAME_W - 100, 350, 14, 0.35);
+        Sprites.drawFlower(ctx, GAME_W / 2 - 200, 250, 8, 0.25);
+        Sprites.drawFlower(ctx, GAME_W / 2 + 200, 250, 8, 0.25);
+
+        // Title
+        ctx.fillStyle = C.ink;
+        ctx.font = `52px ${FONT_TITLE}`;
         ctx.textAlign = 'center';
+        ctx.globalAlpha = 0.08;
+        ctx.fillText(I18n.t('promoted'), GAME_W / 2 + 3, 222);
+        ctx.globalAlpha = 1.0;
         ctx.fillText(I18n.t('promoted'), GAME_W / 2, 220);
 
-        ctx.fillStyle = Sprites.C.white;
-        ctx.font = '18px monospace';
-        ctx.fillText(I18n.t('winMessage'), GAME_W / 2, 270);
+        // Decorative underline
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(GAME_W / 2 - 130, 230);
+        ctx.lineTo(GAME_W / 2 + 130, 230);
+        ctx.stroke();
 
-        ctx.font = 'bold 24px monospace';
-        ctx.fillStyle = Sprites.C.yellow;
-        ctx.fillText(I18n.t('timeLeft') + Math.ceil(timeLeft) + 's', GAME_W / 2, 320);
+        // Win message
+        ctx.fillStyle = C.inkSoft;
+        ctx.font = `18px ${FONT_BODY}`;
+        ctx.fillText(I18n.t('winMessage'), GAME_W / 2, 268);
 
-        // Stars celebration
-        const starChars = ['★', '✦', '✧'];
+        // Time left
+        ctx.fillStyle = C.ink;
+        ctx.font = `bold 24px ${FONT_UI}`;
+        ctx.fillText(I18n.t('timeLeft') + Math.ceil(timeLeft) + 's', GAME_W / 2, 310);
+
+        // Animated sparkles celebration
+        Sprites.drawSparkles(ctx, GAME_W / 2, 340, 250, frame, 12);
+
+        // Extra sparkle cluster
         for (let i = 0; i < 8; i++) {
             const sx = 150 + i * 70 + Math.sin(frame * 0.05 + i) * 20;
-            const sy = 370 + Math.cos(frame * 0.07 + i * 0.5) * 15;
-            ctx.fillStyle = i % 2 === 0 ? Sprites.C.yellow : Sprites.C.white;
-            ctx.font = '20px monospace';
-            ctx.fillText(starChars[i % 3], sx, sy);
+            const sy = 360 + Math.cos(frame * 0.07 + i * 0.5) * 15;
+            ctx.fillStyle = C.ink;
+            ctx.globalAlpha = 0.3 + Math.sin(frame * 0.08 + i) * 0.15;
+            Sprites.drawSparkle4pt(ctx, sx, sy, 4 + Math.sin(frame * 0.06 + i * 2) * 2);
         }
+        ctx.globalAlpha = 1.0;
 
+        // Continue prompt
         if (Math.floor(frame / 30) % 2 === 0) {
-            ctx.fillStyle = Sprites.C.yellow;
-            ctx.font = 'bold 18px monospace';
-            ctx.fillText(I18n.t('pressSpaceAgain'), GAME_W / 2, 450);
+            ctx.fillStyle = C.ink;
+            ctx.font = `bold 20px ${FONT_TITLE}`;
+            ctx.fillText(I18n.t('pressSpaceAgain'), GAME_W / 2, 400);
         }
 
         ctx.textAlign = 'left';
     }
 
-    // ---- Danger overlay when teacher is facing students ----
+    // ================================================================
+    //  DANGER OVERLAY (manga dramatic tension)
+    // ================================================================
     function drawDangerOverlay(frame) {
-        const alpha = 0.08 + Math.sin(frame * 0.15) * 0.04;
-        ctx.fillStyle = `rgba(200, 0, 0, ${alpha})`;
+        const C = Sprites.C;
+
+        // Subtle vignette with ink tone
+        const alpha = 0.04 + Math.sin(frame * 0.15) * 0.02;
+        ctx.fillStyle = `rgba(200, 48, 48, ${alpha})`;
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-        // "ATTENTO!" text at top
-        ctx.fillStyle = `rgba(255, 50, 50, ${0.6 + Math.sin(frame * 0.2) * 0.3})`;
-        ctx.font = 'bold 14px monospace';
+        // Edge vignette lines (manga tension hatching)
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 0.8;
+        ctx.globalAlpha = 0.08 + Math.sin(frame * 0.2) * 0.04;
+        // Top edge hatching
+        for (let i = 0; i < GAME_W; i += 8) {
+            ctx.beginPath();
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i + 4, 15);
+            ctx.stroke();
+        }
+        // Bottom edge hatching
+        for (let i = 0; i < GAME_W; i += 8) {
+            ctx.beginPath();
+            ctx.moveTo(i, GAME_H);
+            ctx.lineTo(i + 4, GAME_H - 15);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1.0;
+
+        // Warning text in manga-style jagged bubble
+        const textAlpha = 0.5 + Math.sin(frame * 0.2) * 0.3;
+        ctx.globalAlpha = textAlpha;
+        ctx.fillStyle = C.ink;
+        ctx.font = `bold 15px ${FONT_TITLE}`;
         ctx.textAlign = 'center';
         ctx.fillText(I18n.t('teacherWatching'), GAME_W / 2, GAME_H - 15);
         ctx.textAlign = 'left';
+        ctx.globalAlpha = 1.0;
     }
 
-    // ---- Teacher state indicator bar at top ----
+    // ================================================================
+    //  TEACHER INDICATOR BAR (manga ink style)
+    // ================================================================
     function drawTeacherIndicator(teacherState, frame) {
+        const C = Sprites.C;
         const barH = 6;
         const y = 150;
+
         if (teacherState === 'facing_board') {
-            ctx.fillStyle = Sprites.C.green;
+            // Safe: thin ink line
+            ctx.fillStyle = C.ink;
+            ctx.globalAlpha = 0.15;
             ctx.fillRect(0, y, GAME_W, barH);
+            ctx.globalAlpha = 1.0;
         } else if (teacherState === 'warning') {
+            // Warning: hatched pattern
+            ctx.fillStyle = Sprites.patterns.crossLight || C.tone2;
+            ctx.fillRect(0, y, GAME_W, barH);
             const flash = Math.floor(frame / 5) % 2 === 0;
-            ctx.fillStyle = flash ? Sprites.C.yellow : '#aa8800';
-            ctx.fillRect(0, y, GAME_W, barH);
+            if (flash) {
+                ctx.fillStyle = C.ink;
+                ctx.globalAlpha = 0.3;
+                ctx.fillRect(0, y, GAME_W, barH);
+                ctx.globalAlpha = 1.0;
+            }
         } else {
+            // Danger: solid dark with flash
             const flash = Math.floor(frame / 8) % 2 === 0;
-            ctx.fillStyle = flash ? Sprites.C.red : Sprites.C.darkRed;
+            ctx.fillStyle = C.ink;
+            ctx.globalAlpha = flash ? 0.8 : 0.5;
             ctx.fillRect(0, y, GAME_W, barH);
+            ctx.globalAlpha = 1.0;
+
+            // Red accent line
+            ctx.fillStyle = C.accentRed;
+            ctx.globalAlpha = flash ? 0.4 : 0.2;
+            ctx.fillRect(0, y, GAME_W, barH);
+            ctx.globalAlpha = 1.0;
         }
     }
 
-    // ---- Clear ----
+    // ================================================================
+    //  CLEAR
+    // ================================================================
     function clear() {
         ctx.clearRect(0, 0, GAME_W, GAME_H);
     }
@@ -712,5 +1060,9 @@ const Renderer = (() => {
         drawWinScreen,
         drawDangerOverlay,
         drawTeacherIndicator,
+        // Expose font constants for game.js
+        FONT_TITLE,
+        FONT_BODY,
+        FONT_UI,
     };
 })();
