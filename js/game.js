@@ -288,10 +288,10 @@ const Game = (() => {
         const C = Sprites.C;
 
         const dirs = [
-            { dc: 0, dr: -1, ox: 0, oy: -30, angle: -Math.PI / 2 },
-            { dc: 0, dr: 1, ox: 0, oy: 30, angle: Math.PI / 2 },
-            { dc: -1, dr: 0, ox: -45, oy: 0, angle: Math.PI },
-            { dc: 1, dr: 0, ox: 45, oy: 0, angle: 0 },
+            { dc: 0, dr: -1, ox: 0, oy: -36, angle: -Math.PI / 2 },
+            { dc: 0, dr: 1, ox: 0, oy: 36, angle: Math.PI / 2 },
+            { dc: -1, dr: 0, ox: -55, oy: 0, angle: Math.PI },
+            { dc: 1, dr: 0, ox: 55, oy: 0, angle: 0 },
         ];
 
         for (const d of dirs) {
