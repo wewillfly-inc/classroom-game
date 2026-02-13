@@ -2,11 +2,22 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Passa il Bigliettino!</title>
+
+    <!-- PWA meta tags -->
+    <meta name="theme-color" content="#2a2420">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bangers&display=swap" rel="stylesheet">
+
     <style>
         * {
             margin: 0;
@@ -20,18 +31,115 @@
             overflow: hidden;
             background: #2a2420;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
+            -webkit-tap-highlight-color: transparent;
         }
 
         canvas {
             display: block;
-            background: #f5f0e0;
+            background: #f8f4e8;
+            touch-action: none;
+        }
+
+        /* ---- On-screen touch controls ---- */
+        #touchControls {
+            display: none; /* hidden by default, shown via JS on touch devices */
+            width: 100%;
+            max-width: 600px;
+            padding: 10px 20px 14px 20px;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            -webkit-user-select: none;
+            flex-shrink: 0;
+        }
+
+        /* D-pad container */
+        .dpad {
+            display: grid;
+            grid-template-columns: 56px 56px 56px;
+            grid-template-rows: 56px 56px 56px;
+            gap: 4px;
+        }
+
+        .dpad-btn {
+            width: 56px;
+            height: 56px;
+            border: 2.5px solid #1a1510;
+            border-radius: 10px;
+            background: #f8f4e8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 22px;
+            color: #1a1510;
+            cursor: pointer;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.05s;
+        }
+
+        .dpad-btn:active, .dpad-btn.pressed {
+            background: #e8e0c8;
+            border-color: #d4a030;
+        }
+
+        .dpad-btn.empty {
+            border: none;
+            background: transparent;
+            cursor: default;
+        }
+
+        /* OK button */
+        .ok-btn {
+            width: 100px;
+            height: 100px;
+            border: 3px solid #1a1510;
+            border-radius: 50%;
+            background: #f8f4e8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Bangers', Impact, sans-serif;
+            font-size: 30px;
+            color: #1a1510;
+            letter-spacing: 2px;
+            cursor: pointer;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.05s;
+        }
+
+        .ok-btn:active, .ok-btn.pressed {
+            background: #e8e0c8;
+            border-color: #d4a030;
+        }
+
+        /* Show controls on touch devices */
+        body.has-touch #touchControls {
+            display: flex;
         }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
+
+    <div id="touchControls">
+        <div class="dpad">
+            <div class="dpad-btn empty"></div>
+            <div class="dpad-btn" id="btnUp" data-key="ArrowUp">&#9650;</div>
+            <div class="dpad-btn empty"></div>
+            <div class="dpad-btn" id="btnLeft" data-key="ArrowLeft">&#9664;</div>
+            <div class="dpad-btn empty"></div>
+            <div class="dpad-btn" id="btnRight" data-key="ArrowRight">&#9654;</div>
+            <div class="dpad-btn empty"></div>
+            <div class="dpad-btn" id="btnDown" data-key="ArrowDown">&#9660;</div>
+            <div class="dpad-btn empty"></div>
+        </div>
+        <div class="ok-btn" id="btnOk" data-key=" ">OK</div>
+    </div>
 
     <script src="js/i18n.js"></script>
     <script src="js/sprites.js"></script>
@@ -42,5 +150,12 @@
     <script src="js/input.js"></script>
     <script src="js/game.js"></script>
     <script src="js/main.js"></script>
+
+    <script>
+        // Register service worker for offline PWA support
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+    </script>
 </body>
 </html>

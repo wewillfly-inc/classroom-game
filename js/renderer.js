@@ -56,12 +56,20 @@ const Renderer = (() => {
 
     function resize() {
         const windowW = window.innerWidth;
-        const windowH = window.innerHeight;
+        let windowH = window.innerHeight;
         const ratio = GAME_W / GAME_H;
 
+        // On touch devices, reserve space for the on-screen controls
+        const controls = document.getElementById('touchControls');
+        let controlsH = 0;
+        if (controls && controls.offsetHeight > 0 && document.body.classList.contains('has-touch')) {
+            controlsH = controls.offsetHeight;
+        }
+        const availableH = windowH - controlsH;
+
         let w, h;
-        if (windowW / windowH > ratio) {
-            h = windowH;
+        if (windowW / availableH > ratio) {
+            h = availableH;
             w = h * ratio;
         } else {
             w = windowW;
@@ -75,7 +83,7 @@ const Renderer = (() => {
 
         scale = w / GAME_W;
         offsetX = (windowW - w) / 2;
-        offsetY = (windowH - h) / 2;
+        offsetY = (availableH - h) / 2;
 
         ctx.imageSmoothingEnabled = true;
     }

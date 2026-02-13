@@ -17,6 +17,12 @@
     Grid.init();
     Teacher.init();
 
+    // Resume audio context on first touch anywhere (mobile requirement)
+    window.addEventListener('touchstart', function onFirstTouch() {
+        SFX.ensureResumed();
+        window.removeEventListener('touchstart', onFirstTouch);
+    }, { once: true });
+
     let lastTime = performance.now();
 
     function gameLoop(now) {

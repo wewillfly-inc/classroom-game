@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head><title>Icon Generator</title></head>
+<body>
+<h2>Click each button to download the icon</h2>
+<button onclick="generate(192)">Download 192x192</button>
+<button onclick="generate(512)">Download 512x512</button>
+<canvas id="c" style="border:1px solid #ccc; margin:20px;"></canvas>
+<script>
+function generate(size) {
+    const c = document.getElementById('c');
+    c.width = size;
+    c.height = size;
+    const ctx = c.getContext('2d');
+
+    // Background (cream paper with rounded corners)
+    const r = size * 0.12;
+    ctx.fillStyle = '#f8f4e8';
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(size - r, 0);
+    ctx.quadraticCurveTo(size, 0, size, r);
+    ctx.lineTo(size, size - r);
+    ctx.quadraticCurveTo(size, size, size - r, size);
+    ctx.lineTo(r, size);
+    ctx.quadraticCurveTo(0, size, 0, size - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    const s = size / 512; // scale factor
+
+    // Manga panel border
+    ctx.strokeStyle = '#1a1510';
+    ctx.lineWidth = 8 * s;
+    ctx.strokeRect(20 * s, 20 * s, size - 40 * s, size - 40 * s);
+    ctx.lineWidth = 3 * s;
+    ctx.strokeRect(28 * s, 28 * s, size - 56 * s, size - 56 * s);
+
+    // Speed lines in background
+    ctx.strokeStyle = '#1a1510';
+    ctx.lineWidth = 1 * s;
+    ctx.globalAlpha = 0.06;
+    for (let i = 0; i < 40; i++) {
+        const angle = (i / 40) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(size/2 + Math.cos(angle) * 60 * s, size/2 + Math.sin(angle) * 60 * s);
+        ctx.lineTo(size/2 + Math.cos(angle) * 220 * s, size/2 + Math.sin(angle) * 220 * s);
+        ctx.stroke();
+    }
+    ctx.globalAlpha = 1.0;
+
+    // Folded note (center)
+    const nx = size * 0.28, ny = size * 0.3, nw = size * 0.44, nh = size * 0.33;
+    // Shadow
+    ctx.fillStyle = 'rgba(26,21,16,0.12)';
+    ctx.fillRect(nx + 4*s, ny + 4*s, nw, nh);
+    // Paper
+    ctx.fillStyle = '#fffff0';
+    ctx.fillRect(nx, ny, nw, nh);
+    ctx.strokeStyle = '#1a1510';
+    ctx.lineWidth = 3 * s;
+    ctx.strokeRect(nx, ny, nw, nh);
+    // Fold corner
+    ctx.fillStyle = '#ece4d0';
+    ctx.beginPath();
+    ctx.moveTo(nx + nw - 30*s, ny);
+    ctx.lineTo(nx + nw, ny);
+    ctx.lineTo(nx + nw, ny + 30*s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#1a1510';
+    ctx.lineWidth = 2*s;
+    ctx.stroke();
+    // Text lines on note
+    ctx.strokeStyle = '#7070b0';
+    ctx.lineWidth = 2*s;
+    for (let i = 0; i < 4; i++) {
+        const ly = ny + 30*s + i * 22*s;
+        const lw = nw * (0.5 + Math.sin(i) * 0.15);
+        ctx.beginPath();
+        ctx.moveTo(nx + 15*s, ly);
+        ctx.quadraticCurveTo(nx + 15*s + lw*0.5, ly - 2*s, nx + 15*s + lw, ly + 1*s);
+        ctx.stroke();
+    }
+    // Heart on note
+    ctx.fillStyle = '#f0a8b0';
+    ctx.globalAlpha = 0.8;
+    const hx = nx + nw - 45*s, hy = ny + nh - 45*s;
+    ctx.beginPath();
+    ctx.moveTo(hx, hy + 5*s);
+    ctx.bezierCurveTo(hx - 12*s, hy - 10*s, hx - 22*s, hy + 5*s, hx, hy + 18*s);
+    ctx.bezierCurveTo(hx + 22*s, hy + 5*s, hx + 12*s, hy - 10*s, hx, hy + 5*s);
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+
+    // Gold sparkle (top-left)
+    ctx.fillStyle = '#d4a030';
+    drawSparkle(ctx, size * 0.18, size * 0.2, 18 * s);
+    ctx.fillStyle = '#f0d030';
+    ctx.globalAlpha = 0.6;
+    drawSparkle(ctx, size * 0.12, size * 0.28, 10 * s);
+    ctx.globalAlpha = 1.0;
+
+    // Gold sparkle (top-right)
+    ctx.fillStyle = '#d4a030';
+    drawSparkle(ctx, size * 0.82, size * 0.2, 18 * s);
+    ctx.fillStyle = '#f0d030';
+    ctx.globalAlpha = 0.6;
+    drawSparkle(ctx, size * 0.88, size * 0.28, 10 * s);
+    ctx.globalAlpha = 1.0;
+
+    // Pink flowers
+    drawFlower(ctx, size * 0.15, size * 0.75, 22 * s);
+    drawFlower(ctx, size * 0.85, size * 0.75, 18 * s);
+
+    // Title text
+    ctx.fillStyle = '#1a1510';
+    ctx.font = `bold ${52 * s}px 'Bangers', Impact, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('PASS', size/2, size * 0.73);
+    ctx.fillText('THE', size/2, size * 0.8);
+    ctx.fillText('NOTE!', size/2, size * 0.87);
+
+    // Download
+    const link = document.createElement('a');
+    link.download = 'icon-' + size + '.png';
+    link.href = c.toDataURL('image/png');
+    link.click();
+}
+
+function drawSparkle(ctx, x, y, size) {
+    ctx.beginPath();
+    ctx.moveTo(x, y - size);
+    ctx.lineTo(x + size*0.2, y - size*0.2);
+    ctx.lineTo(x + size, y);
+    ctx.lineTo(x + size*0.2, y + size*0.2);
+    ctx.lineTo(x, y + size);
+    ctx.lineTo(x - size*0.2, y + size*0.2);
+    ctx.lineTo(x - size, y);
+    ctx.lineTo(x - size*0.2, y - size*0.2);
+    ctx.closePath();
+    ctx.fill();
+}
+
+function drawFlower(ctx, x, y, size) {
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = '#f0a8b0';
+    for (let i = 0; i < 5; i++) {
+        const a = (i/5) * Math.PI * 2 - Math.PI/2;
+        ctx.beginPath();
+        ctx.ellipse(x + Math.cos(a)*size*0.5, y + Math.sin(a)*size*0.5,
+                     size*0.4, size*0.25, a, 0, Math.PI*2);
+        ctx.fill();
+    }
+    ctx.fillStyle = '#f0d030';
+    ctx.beginPath();
+    ctx.arc(x, y, size * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+}
+</script>
+</body>
+</html>
