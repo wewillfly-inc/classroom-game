@@ -162,6 +162,31 @@ const Renderer = (() => {
         return null;
     }
 
+    // Hit detection for title screen (flags + NEXT button)
+    function getTitleScreenHit(clientX, clientY) {
+        const g = screenToGame(clientX, clientY);
+        if (!g) return null;
+        const x = g.x, y = g.y;
+        const flagW = 70, flagH = 48;
+        const langY = 780;
+        const langX = [GAME_W / 2 - 120, GAME_W / 2, GAME_W / 2 + 120];
+        for (let i = 0; i < 3; i++) {
+            const fx = langX[i] - flagW / 2;
+            const fy = langY - flagH / 2;
+            if (x >= fx && x <= fx + flagW && y >= fy && y <= fy + flagH) {
+                return { type: 'flag', index: i };
+            }
+        }
+        const nextX = GAME_W / 2 - 95;
+        const nextY = 900;
+        const nextW = 190;
+        const nextH = 58;
+        if (x >= nextX && x <= nextX + nextW && y >= nextY && y <= nextY + nextH) {
+            return { type: 'next' };
+        }
+        return null;
+    }
+
     // ================================================================
     //  BACKGROUND (colorful manga classroom)
     // ================================================================
@@ -814,10 +839,11 @@ const Renderer = (() => {
     }
 
     // ================================================================
-    //  TITLE SCREEN
+    //  TITLE SCREEN (50% bigger fonts, mobile vs desktop instructions)
     // ================================================================
     function drawTitleScreen(frame) {
         const C = Sprites.C;
+        const isMobile = Input.isTouchActive();
 
         ctx.fillStyle = 'rgba(248, 244, 232, 0.88)';
         ctx.fillRect(0, 0, GAME_W, GAME_H);
@@ -835,87 +861,116 @@ const Renderer = (() => {
         Sprites.drawFlower(ctx, 140, 240, 12, 0.3);
         Sprites.drawFlower(ctx, GAME_W - 140, 240, 12, 0.3);
 
-        // Title (large!)
+        // Title (50% bigger: 62 -> 93)
         ctx.fillStyle = C.ink;
-        ctx.font = `62px ${FONT_TITLE}`;
+        ctx.font = `93px ${FONT_TITLE}`;
         ctx.textAlign = 'center';
         ctx.globalAlpha = 0.08;
-        ctx.fillText(I18n.t('title'), GAME_W / 2 + 3, 212);
+        ctx.fillText(I18n.t('title'), GAME_W / 2 + 4, 235);
         ctx.globalAlpha = 1.0;
-        ctx.fillText(I18n.t('title'), GAME_W / 2, 210);
+        ctx.fillText(I18n.t('title'), GAME_W / 2, 232);
 
-        // Decorative underline with gold accent
+        // Decorative underline
         ctx.strokeStyle = C.accentGold;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.moveTo(GAME_W / 2 - 220, 226);
-        ctx.lineTo(GAME_W / 2 + 220, 226);
+        ctx.moveTo(GAME_W / 2 - 260, 255);
+        ctx.lineTo(GAME_W / 2 + 260, 255);
         ctx.stroke();
 
         // Sparkles
         ctx.fillStyle = C.accentGold;
-        Sprites.drawSparkle4pt(ctx, GAME_W / 2 - 240, 200, 8);
-        Sprites.drawSparkle4pt(ctx, GAME_W / 2 + 240, 200, 8);
+        Sprites.drawSparkle4pt(ctx, GAME_W / 2 - 260, 215, 10);
+        Sprites.drawSparkle4pt(ctx, GAME_W / 2 + 260, 215, 10);
 
-        // Subtitle
+        // Subtitle (50% bigger: 24 -> 36)
         ctx.fillStyle = C.inkSoft;
-        ctx.font = `italic 24px ${FONT_BODY}`;
-        ctx.fillText(I18n.t('subtitle'), GAME_W / 2, 275);
+        ctx.font = `italic 36px ${FONT_BODY}`;
+        ctx.fillText(I18n.t('subtitle'), GAME_W / 2, 310);
 
-        // Instructions (larger text, generous spacing)
+        // Instructions (50% bigger, mobile vs desktop)
         ctx.fillStyle = C.ink;
-        ctx.font = `20px ${FONT_BODY}`;
-        const instructions = [
-            I18n.t('instr1'), I18n.t('instr2'), '',
-            I18n.t('instr3'), I18n.t('instr4'), '',
-            I18n.t('instr5'),
-        ];
-        let iy = 370;
+        ctx.font = `30px ${FONT_BODY}`;
+        const instructions = isMobile
+            ? [
+                I18n.t('instrMobile1'),
+                I18n.t('instrMobile2'),
+                I18n.t('instrMobile3'),
+                '',
+                I18n.t('instrMobile4'),
+                I18n.t('instrMobile5'),
+            ]
+            : [
+                I18n.t('instr1'),
+                I18n.t('instr2'),
+                '',
+                I18n.t('instr3'),
+                I18n.t('instr4'),
+                '',
+                I18n.t('instr5'),
+            ];
+        let iy = 400;
         for (const line of instructions) {
             ctx.fillText(line, GAME_W / 2, iy);
-            iy += 38;
+            iy += 48;
         }
 
-        // Language flags (larger)
-        const flagW = 56, flagH = 36;
-        const langY = 710;
+        // Language flags (larger: 70x48)
+        const flagW = 70, flagH = 48;
+        const langY = 780;
+        const langX = [GAME_W / 2 - 120, GAME_W / 2, GAME_W / 2 + 120];
         const current = I18n.languages.indexOf(I18n.getLanguage());
-        const langX = [GAME_W / 2 - 110, GAME_W / 2, GAME_W / 2 + 110];
         const drawFlagFns = [drawFlagItaly, drawFlagUK, drawFlagGermany];
         for (let i = 0; i < 3; i++) {
             const fx = langX[i] - flagW / 2;
             const fy = langY - flagH / 2;
             drawFlagFns[i](ctx, fx, fy, flagW, flagH);
             ctx.strokeStyle = C.ink;
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 2;
             ctx.strokeRect(fx, fy, flagW, flagH);
             if (i === current) {
                 ctx.strokeStyle = C.accentGold;
-                ctx.lineWidth = 3;
-                ctx.strokeRect(fx - 3, fy - 3, flagW + 6, flagH + 6);
+                ctx.lineWidth = 4;
+                ctx.strokeRect(fx - 4, fy - 4, flagW + 8, flagH + 8);
                 ctx.fillStyle = C.accentGold;
-                Sprites.drawSparkle4pt(ctx, fx - 12, fy - 12, 6);
-                Sprites.drawSparkle4pt(ctx, fx + flagW + 12, fy - 12, 6);
+                Sprites.drawSparkle4pt(ctx, fx - 14, fy - 14, 7);
+                Sprites.drawSparkle4pt(ctx, fx + flagW + 14, fy - 14, 7);
             }
         }
-        ctx.textAlign = 'center';
         ctx.fillStyle = C.inkLight;
-        ctx.font = `16px ${FONT_UI}`;
-        ctx.fillText('\u2190 \u2192', GAME_W / 2, langY + flagH / 2 + 22);
+        ctx.font = `24px ${FONT_UI}`;
+        ctx.fillText(I18n.t(isMobile ? 'titleLangHintMobile' : 'titleLangHintDesktop'), GAME_W / 2, langY + flagH / 2 + 28);
 
-        // Additional flowers at bottom
-        Sprites.drawFlower(ctx, 100, 840, 14, 0.35);
-        Sprites.drawFlower(ctx, GAME_W - 100, 840, 14, 0.35);
-
-        // Start prompt (large)
-        if (Math.floor(frame / 30) % 2 === 0) {
-            ctx.fillStyle = C.ink;
-            ctx.font = `bold 30px ${FONT_TITLE}`;
-            const promptKey = Input.isTouchActive() ? 'touchContinue' : 'pressSpaceContinue';
-            ctx.fillText(I18n.t(promptKey), GAME_W / 2, 920);
+        // NEXT button (mobile: tappable; desktop: show "or press SPACE")
+        const nextX = GAME_W / 2 - 95;
+        const nextY = 900;
+        const nextW = 190;
+        const nextH = 58;
+        const nextPulse = 0.92 + Math.sin(frame * 0.08) * 0.08;
+        ctx.globalAlpha = nextPulse;
+        ctx.fillStyle = C.accentGold;
+        Sprites.roundRectPath(ctx, nextX, nextY, nextW, nextH, 12);
+        ctx.fill();
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = C.ink;
+        ctx.font = `bold 36px ${FONT_TITLE}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(I18n.t('nextButton'), GAME_W / 2, nextY + nextH / 2);
+        if (!isMobile) {
+            ctx.fillStyle = C.inkLight;
+            ctx.font = `20px ${FONT_UI}`;
+            ctx.fillText(I18n.t('pressSpaceContinue'), GAME_W / 2, nextY + nextH + 30);
         }
-
+        ctx.textBaseline = 'alphabetic';
         ctx.textAlign = 'left';
+
+        // Flowers at bottom
+        Sprites.drawFlower(ctx, 100, 970, 14, 0.35);
+        Sprites.drawFlower(ctx, GAME_W - 100, 970, 14, 0.35);
     }
 
     // ================================================================
@@ -1318,6 +1373,7 @@ const Renderer = (() => {
         getCellCenter,
         screenToCell,
         getSettingsHit,
+        getTitleScreenHit,
         drawBackground,
         updateAndDrawAmbient,
         drawBlackboard,

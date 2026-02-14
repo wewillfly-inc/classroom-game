@@ -191,9 +191,25 @@ const Input = (() => {
                     Game.handleSettingsTouch(hit);
                     return;
                 }
-                return; // mobile settings: only PLAY/option taps work
+                return;
             }
-            if (state === 'title' || state === 'gameover' || state === 'win') {
+            if (state === 'title' && typeof Renderer !== 'undefined' && Renderer.getTitleScreenHit) {
+                const hit = Renderer.getTitleScreenHit(e.clientX, e.clientY);
+                if (hit && typeof I18n !== 'undefined') {
+                    if (hit.type === 'flag') {
+                        const lang = I18n.languages[hit.index];
+                        if (lang) I18n.setLanguage(lang);
+                        return;
+                    }
+                    if (hit.type === 'next') {
+                        if (!keys[' ']) justPressed[' '] = true;
+                        keys[' '] = true;
+                        return;
+                    }
+                }
+                return; // mobile title: only flag/NEXT taps
+            }
+            if (state === 'gameover' || state === 'win') {
                 if (!keys[' ']) justPressed[' '] = true;
                 keys[' '] = true;
             }
