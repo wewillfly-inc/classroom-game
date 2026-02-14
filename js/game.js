@@ -71,8 +71,20 @@ const Game = (() => {
         SFX.playStart();
     }
 
+    // Return to settings screen (used by Escape key and mobile back button)
+    function goToSettings() {
+        if (state === 'playing' || state === 'gameover' || state === 'win') {
+            state = 'settings';
+        }
+    }
+
     function update(dt) {
         frame++;
+
+        // Escape key returns to settings from gameplay / result screens
+        if (Input.wasJustPressed('Escape')) {
+            goToSettings();
+        }
 
         switch (state) {
             case 'title':
@@ -338,5 +350,6 @@ const Game = (() => {
         getState,
         getFrame,
         getTimeLeft,
+        goToSettings,
     };
 })();

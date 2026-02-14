@@ -3,6 +3,11 @@
 // ============================================================
 
 const Input = (() => {
+    // ========== DEBUG FLAG ==========
+    // Set to true to show a "Mobile View" toggle button on desktop
+    const DEBUG_SHOW_MOBILE_TOGGLE = true;
+    // ================================
+
     // Track which keys are currently pressed
     const keys = {};
     // Track keys that were just pressed this frame
@@ -14,7 +19,7 @@ const Input = (() => {
     function init() {
         // ---- Keyboard input ----
         window.addEventListener('keydown', (e) => {
-            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Escape'].includes(e.key)) {
                 e.preventDefault();
             }
             if (!keys[e.key]) {
@@ -29,6 +34,12 @@ const Input = (() => {
 
         // ---- Touch device detection ----
         detectTouch();
+
+        // ---- Debug: mobile preview toggle on desktop ----
+        initDebugToggle();
+
+        // ---- Mobile back-to-settings button ----
+        initBackButton();
 
         // ---- On-screen D-pad button handlers ----
         initTouchButtons();
@@ -56,6 +67,48 @@ const Input = (() => {
         if (typeof Renderer !== 'undefined') {
             Renderer.resize();
         }
+    }
+
+    function disableTouchControls() {
+        if (!isTouchDevice) return;
+        isTouchDevice = false;
+        document.body.classList.remove('has-touch');
+        if (typeof Renderer !== 'undefined') {
+            Renderer.resize();
+        }
+    }
+
+    // Debug button to toggle mobile view on desktop
+    function initDebugToggle() {
+        if (!DEBUG_SHOW_MOBILE_TOGGLE) return;
+        const btn = document.getElementById('debugMobileToggle');
+        if (!btn) return;
+        btn.style.display = 'block';
+        btn.addEventListener('click', () => {
+            if (isTouchDevice) {
+                disableTouchControls();
+                btn.textContent = 'Mobile View';
+            } else {
+                enableTouchControls();
+                btn.textContent = 'Desktop View';
+            }
+        });
+    }
+
+    // Wire up the mobile "back to settings" button
+    function initBackButton() {
+        const btn = document.getElementById('backToSettings');
+        if (!btn) return;
+
+        btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof Game !== 'undefined' && Game.goToSettings) {
+                Game.goToSettings();
+            }
+        });
+
+        btn.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 
     // Wire up on-screen D-pad buttons to simulate arrow key presses
@@ -167,6 +220,14 @@ const Input = (() => {
         return isTouchDevice;
     }
 
+    // Show / hide the back button depending on game state and touch mode
+    function updateBackButton(gameState) {
+        const btn = document.getElementById('backToSettings');
+        if (!btn) return;
+        const visible = isTouchDevice && (gameState === 'playing' || gameState === 'gameover' || gameState === 'win');
+        btn.style.display = visible ? 'block' : 'none';
+    }
+
     return {
         init,
         endFrame,
@@ -175,5 +236,6 @@ const Input = (() => {
         getArrowDirection,
         wasSpacePressed,
         isTouchActive,
+        updateBackButton,
     };
 })();

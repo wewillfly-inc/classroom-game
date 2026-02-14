@@ -35,6 +35,9 @@
         // Render
         Game.render();
 
+        // Show / hide mobile back button based on current state
+        Input.updateBackButton(Game.getState());
+
         // Clear input state for next frame
         Input.endFrame();
 

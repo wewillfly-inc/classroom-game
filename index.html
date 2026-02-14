@@ -96,9 +96,47 @@
         body.has-touch #touchControls {
             display: flex;
         }
+
+        /* ---- Mobile back-to-settings button ---- */
+        #backToSettings {
+            display: none;
+            position: fixed;
+            top: 6px;
+            left: 6px;
+            z-index: 9000;
+            padding: 5px 10px;
+            font: bold 13px sans-serif;
+            color: #1a1510;
+            background: rgba(248,244,232,0.85);
+            border: 2px solid #1a1510;
+            border-radius: 6px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        #backToSettings:active { background: #e8e0c8; }
+
+        /* Debug: mobile preview toggle button */
+        #debugMobileToggle {
+            display: none;
+            position: fixed;
+            top: 6px;
+            right: 6px;
+            z-index: 9999;
+            padding: 5px 10px;
+            font: bold 11px sans-serif;
+            color: #fff;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #debugMobileToggle:hover { background: rgba(0,0,0,0.8); }
     </style>
 </head>
 <body>
+    <button id="debugMobileToggle">Mobile View</button>
+    <button id="backToSettings">&#9664; Menu</button>
     <canvas id="gameCanvas"></canvas>
 
     <div id="touchControls">
