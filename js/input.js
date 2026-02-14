@@ -30,21 +30,22 @@ const Input = (() => {
         // ---- Touch device detection ----
         detectTouch();
 
-        // ---- On-screen button handlers ----
+        // ---- On-screen D-pad button handlers ----
         initTouchButtons();
+
+        // ---- Canvas tap = Space (for touch devices) ----
+        initCanvasTap();
     }
 
-    // Detect touch capability and show controls
+    // Detect whether this is a phone/tablet (not a touchscreen desktop).
+    // Uses media queries: "pointer: coarse" means the primary input is a
+    // finger, and "hover: none" means there is no mouse. Together they
+    // exclude laptops/desktops that happen to have a touchscreen.
     function detectTouch() {
-        const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-        if (hasTouch) {
+        const isCoarsePointer = window.matchMedia('(pointer: coarse) and (hover: none)').matches;
+        if (isCoarsePointer) {
             enableTouchControls();
         }
-        // Also listen for first touch event as fallback
-        window.addEventListener('touchstart', function onFirstTouch() {
-            enableTouchControls();
-            window.removeEventListener('touchstart', onFirstTouch);
-        }, { once: true });
     }
 
     function enableTouchControls() {
@@ -57,15 +58,14 @@ const Input = (() => {
         }
     }
 
-    // Wire up on-screen buttons to simulate key presses
+    // Wire up on-screen D-pad buttons to simulate arrow key presses
     function initTouchButtons() {
-        const buttons = document.querySelectorAll('.dpad-btn[data-key], .ok-btn[data-key]');
+        const buttons = document.querySelectorAll('.dpad-btn[data-key]');
 
         buttons.forEach(btn => {
             const key = btn.getAttribute('data-key');
             if (!key) return;
 
-            // Use pointer events for immediate response (no 300ms delay)
             btn.addEventListener('pointerdown', (e) => {
                 e.preventDefault();
                 if (!keys[key]) {
@@ -100,6 +100,40 @@ const Input = (() => {
             btn.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
             });
+        });
+    }
+
+    // Tapping anywhere on the canvas acts as Space (OK / confirm)
+    function initCanvasTap() {
+        const canvas = document.getElementById('gameCanvas');
+        if (!canvas) return;
+
+        canvas.addEventListener('pointerdown', (e) => {
+            // Only respond on touch devices
+            if (!isTouchDevice) return;
+            e.preventDefault();
+            if (!keys[' ']) {
+                justPressed[' '] = true;
+            }
+            keys[' '] = true;
+
+            if (typeof SFX !== 'undefined' && SFX.ensureResumed) {
+                SFX.ensureResumed();
+            }
+        });
+
+        canvas.addEventListener('pointerup', (e) => {
+            if (!isTouchDevice) return;
+            keys[' '] = false;
+        });
+
+        canvas.addEventListener('pointercancel', (e) => {
+            if (!isTouchDevice) return;
+            keys[' '] = false;
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
         });
     }
 

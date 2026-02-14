@@ -199,8 +199,8 @@ const Sprites = (() => {
     ];
     const hairFills = [C.hairBlack, C.hairBrown, C.hairBlonde, C.hairAuburn, C.hairDarkBlue];
 
-    // Increased scale for higher resolution
-    const SPRITE_SCALE = 2.5;
+    // Increased scale for portrait layout with large cells
+    const SPRITE_SCALE = 4.0;
 
     function studentAppearance(col, row) {
         const cols = (typeof Grid !== 'undefined' && Grid.COLS) ? Grid.COLS : 5;

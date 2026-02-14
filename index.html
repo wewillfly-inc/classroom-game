@@ -49,7 +49,7 @@
             width: 100%;
             max-width: 600px;
             padding: 10px 20px 14px 20px;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
             user-select: none;
             -webkit-user-select: none;
@@ -92,31 +92,6 @@
             cursor: default;
         }
 
-        /* OK button */
-        .ok-btn {
-            width: 100px;
-            height: 100px;
-            border: 3px solid #1a1510;
-            border-radius: 50%;
-            background: #f8f4e8;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Bangers', Impact, sans-serif;
-            font-size: 30px;
-            color: #1a1510;
-            letter-spacing: 2px;
-            cursor: pointer;
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
-            transition: background 0.05s;
-        }
-
-        .ok-btn:active, .ok-btn.pressed {
-            background: #e8e0c8;
-            border-color: #d4a030;
-        }
-
         /* Show controls on touch devices */
         body.has-touch #touchControls {
             display: flex;
@@ -138,7 +113,6 @@
             <div class="dpad-btn" id="btnDown" data-key="ArrowDown">&#9660;</div>
             <div class="dpad-btn empty"></div>
         </div>
-        <div class="ok-btn" id="btnOk" data-key=" ">OK</div>
     </div>
 
     <script src="js/i18n.js"></script>

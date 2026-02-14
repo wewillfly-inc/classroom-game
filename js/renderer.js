@@ -1,27 +1,27 @@
 // ============================================================
 // renderer.js - Colorful Manga Classroom Scene Renderer
-// 1024x768 resolution, inspired by 1960s shojo manga
+// 768x1024 portrait resolution, inspired by 1960s shojo manga
 // ============================================================
 
 const Renderer = (() => {
-    const GAME_W = 1024;
-    const GAME_H = 768;
+    const GAME_W = 768;
+    const GAME_H = 1024;
 
-    // Layout constants (scaled for higher res)
-    const BOARD_Y = 25;
-    const BOARD_H = 90;
-    const BOARD_W = 380;
+    // Layout constants (compact top area to maximize grid)
+    const BOARD_Y = 10;
+    const BOARD_H = 55;
+    const BOARD_W = 250;
 
-    const TEACHER_W = 80;
-    const TEACHER_H = 128;
+    const TEACHER_W = 60;
+    const TEACHER_H = 100;
 
     // Dynamic grid layout
     let GRID_COLS = 4;
     let GRID_ROWS = 5;
     let CELL_W = 150;
-    let CELL_H = 100;
-    let GRID_START_X = 160;
-    let GRID_START_Y = 215;
+    let CELL_H = 170;
+    let GRID_START_X = 10;
+    let GRID_START_Y = 140;
 
     let canvas, ctx;
     let scale = 1;
@@ -44,14 +44,15 @@ const Renderer = (() => {
         GRID_COLS = cols;
         GRID_ROWS = rows;
 
-        const maxGridW = GAME_W - 160;
-        const maxGridH = GAME_H - 245;
+        // Use nearly the full canvas (small margins)
+        const maxGridW = GAME_W - 16;       // 8px margin each side
+        const maxGridH = GAME_H - 140 - 15; // below compact top area, 15px bottom margin
 
-        CELL_W = Math.min(150, Math.floor(maxGridW / cols));
-        CELL_H = Math.min(100, Math.floor(maxGridH / rows));
+        CELL_W = Math.min(152, Math.floor(maxGridW / cols));
+        CELL_H = Math.min(170, Math.floor(maxGridH / rows));
 
         GRID_START_X = Math.floor((GAME_W - cols * CELL_W) / 2);
-        GRID_START_Y = 215;
+        GRID_START_Y = 140;
     }
 
     function resize() {
@@ -111,70 +112,45 @@ const Renderer = (() => {
         ctx.fillStyle = C.paper;
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-        // Floor with warm wood screentone
+        // Floor with warm wood screentone (starts right below compact wall)
         ctx.fillStyle = P.floor || C.floorWood;
-        ctx.fillRect(0, 190, GAME_W, GAME_H - 190);
+        ctx.fillRect(0, 130, GAME_W, GAME_H - 130);
 
         // Floor board lines
         ctx.strokeStyle = C.floorWoodDk;
         ctx.lineWidth = 0.5;
-        for (let fy = 200; fy < GAME_H; fy += 35) {
+        for (let fy = 140; fy < GAME_H; fy += 35) {
             ctx.beginPath();
             ctx.moveTo(0, fy);
             ctx.lineTo(GAME_W, fy);
             ctx.stroke();
         }
 
-        // Back wall (warm cream)
+        // Back wall (warm cream) - compact
         ctx.fillStyle = P.wallTone || C.wallCream;
-        ctx.fillRect(0, 0, GAME_W, 190);
+        ctx.fillRect(0, 0, GAME_W, 130);
 
         // Wall-floor border
         ctx.strokeStyle = C.ink;
         ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(0, 190);
-        ctx.lineTo(GAME_W, 190);
+        ctx.moveTo(0, 130);
+        ctx.lineTo(GAME_W, 130);
         ctx.stroke();
 
-        // Wainscoting
+        // Wainscoting (thin)
         ctx.fillStyle = C.wallCreamDk;
-        ctx.fillRect(0, 165, GAME_W, 25);
+        ctx.fillRect(0, 112, GAME_W, 18);
         ctx.strokeStyle = C.inkSoft;
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(0, 165); ctx.lineTo(GAME_W, 165); ctx.stroke();
-        // Wainscoting detail line
-        ctx.strokeStyle = C.deskFront;
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(0, 175); ctx.lineTo(GAME_W, 175); ctx.stroke();
+        ctx.moveTo(0, 112); ctx.lineTo(GAME_W, 112); ctx.stroke();
 
-        // Side wall strips
-        ctx.fillStyle = C.wallCreamDk;
-        ctx.fillRect(0, 0, 12, GAME_H);
-        ctx.fillRect(GAME_W - 12, 0, 12, GAME_H);
-        ctx.strokeStyle = C.inkSoft;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(12, 0); ctx.lineTo(12, GAME_H); ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(GAME_W - 12, 0); ctx.lineTo(GAME_W - 12, GAME_H); ctx.stroke();
+        // Clock (upper right of wall)
+        drawMangaClock(GAME_W - 60, 40);
 
-        // Windows (left wall) - blue sky!
-        for (let wy = 230; wy < 640; wy += 170) {
-            drawColorWindow(14, wy, 56, 90);
-        }
-        // Windows (right wall)
-        for (let wy = 230; wy < 640; wy += 170) {
-            drawColorWindow(GAME_W - 70, wy, 56, 90);
-        }
-
-        // Clock
-        drawMangaClock(GAME_W - 140, 50);
-
-        // Poster
-        drawMangaPoster(90, 35, 60, 80);
+        // Poster (upper left of wall)
+        drawMangaPoster(30, 20, 45, 60);
     }
 
     // Colorful window with blue sky
@@ -309,7 +285,7 @@ const Renderer = (() => {
     // ================================================================
     function drawTeacher(teacherState, frame) {
         const tx = (GAME_W - TEACHER_W) / 2;
-        const ty = 55;
+        const ty = 22;
 
         if (teacherState === 'facing_board' || teacherState === 'warning') {
             Sprites.drawTeacherBack(ctx, tx, ty, TEACHER_W, TEACHER_H, frame);
@@ -318,7 +294,7 @@ const Renderer = (() => {
         }
 
         if (teacherState === 'warning') {
-            Sprites.drawWarningBubble(ctx, GAME_W / 2, ty - 5, 28, frame);
+            Sprites.drawWarningBubble(ctx, GAME_W / 2, ty - 5, 22, frame);
         }
     }
 
@@ -416,8 +392,8 @@ const Renderer = (() => {
     // ================================================================
     function drawTimer(timeLeft, maxTime) {
         const C = Sprites.C;
-        const x = GAME_W - 125;
-        const y = 18;
+        const x = GAME_W - 115;
+        const y = 8;
         const ratio = timeLeft / maxTime;
 
         // Panel
@@ -432,7 +408,7 @@ const Renderer = (() => {
         ctx.fillStyle = timeLeft <= 10 ? C.accentRed : C.ink;
         ctx.font = `bold 22px ${FONT_UI}`;
         ctx.textAlign = 'right';
-        ctx.fillText(Math.ceil(timeLeft) + 's', GAME_W - 18, y + 20);
+        ctx.fillText(Math.ceil(timeLeft) + 's', GAME_W - 10, y + 20);
 
         // Timer bar
         const barW = 85;
@@ -523,64 +499,64 @@ const Renderer = (() => {
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
         // Double panel border
-        drawMangaPanel(25, 25, GAME_W - 50, GAME_H - 50, 4);
-        drawMangaPanel(30, 30, GAME_W - 60, GAME_H - 60, 1.5);
+        drawMangaPanel(20, 20, GAME_W - 40, GAME_H - 40, 5);
+        drawMangaPanel(26, 26, GAME_W - 52, GAME_H - 52, 1.5);
 
         // Speed lines behind title
-        Sprites.drawSpeedLines(ctx, GAME_W / 2, 210, 35, 220, 45, 0.07, 1);
+        Sprites.drawSpeedLines(ctx, GAME_W / 2, 200, 40, 260, 50, 0.07, 1);
 
         // Flowers
-        Sprites.drawFlower(ctx, 120, 195, 14, 0.4);
-        Sprites.drawFlower(ctx, GAME_W - 120, 195, 12, 0.35);
-        Sprites.drawFlower(ctx, 180, 240, 9, 0.25);
-        Sprites.drawFlower(ctx, GAME_W - 180, 240, 9, 0.25);
+        Sprites.drawFlower(ctx, 80, 185, 18, 0.5);
+        Sprites.drawFlower(ctx, GAME_W - 80, 185, 16, 0.45);
+        Sprites.drawFlower(ctx, 140, 240, 12, 0.3);
+        Sprites.drawFlower(ctx, GAME_W - 140, 240, 12, 0.3);
 
-        // Title
+        // Title (large!)
         ctx.fillStyle = C.ink;
-        ctx.font = `48px ${FONT_TITLE}`;
+        ctx.font = `62px ${FONT_TITLE}`;
         ctx.textAlign = 'center';
         ctx.globalAlpha = 0.08;
-        ctx.fillText(I18n.t('title'), GAME_W / 2 + 3, 222);
+        ctx.fillText(I18n.t('title'), GAME_W / 2 + 3, 212);
         ctx.globalAlpha = 1.0;
-        ctx.fillText(I18n.t('title'), GAME_W / 2, 220);
+        ctx.fillText(I18n.t('title'), GAME_W / 2, 210);
 
         // Decorative underline with gold accent
         ctx.strokeStyle = C.accentGold;
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(GAME_W / 2 - 180, 232);
-        ctx.lineTo(GAME_W / 2 + 180, 232);
+        ctx.moveTo(GAME_W / 2 - 220, 226);
+        ctx.lineTo(GAME_W / 2 + 220, 226);
         ctx.stroke();
 
         // Sparkles
         ctx.fillStyle = C.accentGold;
-        Sprites.drawSparkle4pt(ctx, GAME_W / 2 - 200, 210, 6);
-        Sprites.drawSparkle4pt(ctx, GAME_W / 2 + 200, 210, 6);
+        Sprites.drawSparkle4pt(ctx, GAME_W / 2 - 240, 200, 8);
+        Sprites.drawSparkle4pt(ctx, GAME_W / 2 + 240, 200, 8);
 
         // Subtitle
         ctx.fillStyle = C.inkSoft;
-        ctx.font = `italic 17px ${FONT_BODY}`;
-        ctx.fillText(I18n.t('subtitle'), GAME_W / 2, 260);
+        ctx.font = `italic 24px ${FONT_BODY}`;
+        ctx.fillText(I18n.t('subtitle'), GAME_W / 2, 275);
 
-        // Instructions
+        // Instructions (larger text, generous spacing)
         ctx.fillStyle = C.ink;
-        ctx.font = `15px ${FONT_BODY}`;
+        ctx.font = `20px ${FONT_BODY}`;
         const instructions = [
             I18n.t('instr1'), I18n.t('instr2'), '',
             I18n.t('instr3'), I18n.t('instr4'), '',
             I18n.t('instr5'),
         ];
-        let iy = 310;
+        let iy = 370;
         for (const line of instructions) {
             ctx.fillText(line, GAME_W / 2, iy);
-            iy += 24;
+            iy += 38;
         }
 
-        // Language flags
-        const flagW = 46, flagH = 30;
-        const langY = 560;
+        // Language flags (larger)
+        const flagW = 56, flagH = 36;
+        const langY = 710;
         const current = I18n.languages.indexOf(I18n.getLanguage());
-        const langX = [GAME_W / 2 - 90, GAME_W / 2, GAME_W / 2 + 90];
+        const langX = [GAME_W / 2 - 110, GAME_W / 2, GAME_W / 2 + 110];
         const drawFlagFns = [drawFlagItaly, drawFlagUK, drawFlagGermany];
         for (let i = 0; i < 3; i++) {
             const fx = langX[i] - flagW / 2;
@@ -594,20 +570,25 @@ const Renderer = (() => {
                 ctx.lineWidth = 3;
                 ctx.strokeRect(fx - 3, fy - 3, flagW + 6, flagH + 6);
                 ctx.fillStyle = C.accentGold;
-                Sprites.drawSparkle4pt(ctx, fx - 10, fy - 10, 5);
-                Sprites.drawSparkle4pt(ctx, fx + flagW + 10, fy - 10, 5);
+                Sprites.drawSparkle4pt(ctx, fx - 12, fy - 12, 6);
+                Sprites.drawSparkle4pt(ctx, fx + flagW + 12, fy - 12, 6);
             }
         }
         ctx.textAlign = 'center';
         ctx.fillStyle = C.inkLight;
-        ctx.font = `13px ${FONT_UI}`;
-        ctx.fillText('\u2190 \u2192', GAME_W / 2, langY + flagH / 2 + 18);
+        ctx.font = `16px ${FONT_UI}`;
+        ctx.fillText('\u2190 \u2192', GAME_W / 2, langY + flagH / 2 + 22);
 
-        // Start prompt
+        // Additional flowers at bottom
+        Sprites.drawFlower(ctx, 100, 840, 14, 0.35);
+        Sprites.drawFlower(ctx, GAME_W - 100, 840, 14, 0.35);
+
+        // Start prompt (large)
         if (Math.floor(frame / 30) % 2 === 0) {
             ctx.fillStyle = C.ink;
-            ctx.font = `bold 24px ${FONT_TITLE}`;
-            ctx.fillText(I18n.t('pressSpaceContinue'), GAME_W / 2, 650);
+            ctx.font = `bold 30px ${FONT_TITLE}`;
+            const promptKey = Input.isTouchActive() ? 'touchContinue' : 'pressSpaceContinue';
+            ctx.fillText(I18n.t(promptKey), GAME_W / 2, 920);
         }
 
         ctx.textAlign = 'left';
@@ -621,58 +602,62 @@ const Renderer = (() => {
 
         ctx.fillStyle = 'rgba(248, 244, 232, 0.93)';
         ctx.fillRect(0, 0, GAME_W, GAME_H);
-        drawMangaPanel(25, 25, GAME_W - 50, GAME_H - 50, 4);
+        drawMangaPanel(20, 20, GAME_W - 40, GAME_H - 40, 4);
 
         // Title
         ctx.fillStyle = C.ink;
-        ctx.font = `38px ${FONT_TITLE}`;
+        ctx.font = `44px ${FONT_TITLE}`;
         ctx.textAlign = 'center';
-        ctx.fillText(I18n.t('chooseDifficulty'), GAME_W / 2, 90);
+        ctx.fillText(I18n.t('chooseDifficulty'), GAME_W / 2, 110);
 
         ctx.strokeStyle = C.accentGold;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(GAME_W / 2 - 200, 98);
-        ctx.lineTo(GAME_W / 2 + 200, 98);
+        ctx.moveTo(GAME_W / 2 - 220, 120);
+        ctx.lineTo(GAME_W / 2 + 220, 120);
         ctx.stroke();
 
         // Grid row
         const gridLabels = ['3 x 4', '5 x 4', '5 x 5'];
         const gridDescs = [I18n.t('gridEasy'), I18n.t('gridMedium'), I18n.t('gridHard')];
-        const rowY1 = 190;
+        const rowY1 = 270;
+        ctx.textAlign = 'center';
         ctx.fillStyle = settingsRow === 0 ? C.ink : C.inkLight;
-        ctx.font = `bold 17px ${FONT_UI}`;
-        ctx.fillText(I18n.t('grid'), GAME_W / 2, rowY1 - 25);
+        ctx.font = `bold 22px ${FONT_UI}`;
+        ctx.fillText(I18n.t('grid'), GAME_W / 2, rowY1 - 72);
         drawOptionRow(gridLabels, gridDescs, gridChoice, rowY1, settingsRow === 0, frame);
 
         // Time row
         const timeLabels = ['20s', '40s', '60s'];
         const timeDescs = [I18n.t('timeChallenge'), I18n.t('timeNormal'), I18n.t('timeRelaxed')];
-        const rowY2 = 355;
+        const rowY2 = 500;
+        ctx.textAlign = 'center';
         ctx.fillStyle = settingsRow === 1 ? C.ink : C.inkLight;
-        ctx.font = `bold 17px ${FONT_UI}`;
-        ctx.fillText(I18n.t('time'), GAME_W / 2, rowY2 - 25);
+        ctx.font = `bold 22px ${FONT_UI}`;
+        ctx.fillText(I18n.t('time'), GAME_W / 2, rowY2 - 72);
         drawOptionRow(timeLabels, timeDescs, timeChoice, rowY2, settingsRow === 1, frame);
 
         // Sleepers row
         const sleepLabels = ['3', '5', '7'];
         const sleepDescs = [I18n.t('sleepFew'), I18n.t('sleepMedium'), I18n.t('sleepMany')];
-        const rowY3 = 520;
+        const rowY3 = 730;
+        ctx.textAlign = 'center';
         ctx.fillStyle = settingsRow === 2 ? C.ink : C.inkLight;
-        ctx.font = `bold 17px ${FONT_UI}`;
-        ctx.fillText(I18n.t('sleepers'), GAME_W / 2, rowY3 - 25);
+        ctx.font = `bold 22px ${FONT_UI}`;
+        ctx.fillText(I18n.t('sleepers'), GAME_W / 2, rowY3 - 72);
         drawOptionRow(sleepLabels, sleepDescs, sleepChoice, rowY3, settingsRow === 2, frame);
 
         // Nav hint
         ctx.fillStyle = C.inkLight;
-        ctx.font = `14px ${FONT_UI}`;
-        ctx.fillText(I18n.t('navHint'), GAME_W / 2, 630);
+        ctx.font = `17px ${FONT_UI}`;
+        ctx.fillText(I18n.t('navHint'), GAME_W / 2, 870);
 
         // Start prompt
         if (Math.floor(frame / 30) % 2 === 0) {
             ctx.fillStyle = C.ink;
-            ctx.font = `bold 24px ${FONT_TITLE}`;
-            ctx.fillText(I18n.t('pressSpacePlay'), GAME_W / 2, 690);
+            ctx.font = `bold 30px ${FONT_TITLE}`;
+            const promptKey = Input.isTouchActive() ? 'touchPlay' : 'pressSpacePlay';
+            ctx.fillText(I18n.t(promptKey), GAME_W / 2, 950);
         }
 
         ctx.textAlign = 'left';
@@ -680,14 +665,14 @@ const Renderer = (() => {
 
     function drawOptionRow(labels, descriptions, selected, y, isActiveRow, frame) {
         const C = Sprites.C;
-        const spacing = 230;
+        const spacing = 220;
         const startX = GAME_W / 2 - spacing;
 
         for (let i = 0; i < 3; i++) {
             const cx = startX + i * spacing;
             const isSelected = (i === selected);
-            const boxW = 160;
-            const boxH = 80;
+            const boxW = 165;
+            const boxH = 95;
             const bx = cx - boxW / 2;
             const by = y - boxH / 2;
 
@@ -715,24 +700,24 @@ const Renderer = (() => {
             }
 
             ctx.fillStyle = isSelected ? C.ink : C.inkLight;
-            ctx.font = isSelected ? `bold 24px ${FONT_UI}` : `22px ${FONT_UI}`;
+            ctx.font = isSelected ? `bold 28px ${FONT_UI}` : `26px ${FONT_UI}`;
             ctx.textAlign = 'center';
-            ctx.fillText(labels[i], cx, y + 4);
+            ctx.fillText(labels[i], cx, y + 6);
 
             ctx.fillStyle = isSelected ? C.inkSoft : C.inkLight;
-            ctx.font = `13px ${FONT_BODY}`;
-            ctx.fillText(descriptions[i], cx, y + 26);
+            ctx.font = `16px ${FONT_BODY}`;
+            ctx.fillText(descriptions[i], cx, y + 32);
         }
 
         if (isActiveRow) {
             const leftX = startX - spacing / 2 - 15;
             const rightX = startX + 2 * spacing + spacing / 2 + 15;
             ctx.fillStyle = C.accentGold;
-            ctx.font = `22px ${FONT_UI}`;
+            ctx.font = `26px ${FONT_UI}`;
             ctx.textAlign = 'center';
             if (Math.floor(frame / 20) % 2 === 0) {
-                ctx.fillText('\u25C4', leftX, y + 6);
-                ctx.fillText('\u25BA', rightX, y + 6);
+                ctx.fillText('\u25C4', leftX, y + 8);
+                ctx.fillText('\u25BA', rightX, y + 8);
             }
         }
 
@@ -749,54 +734,55 @@ const Renderer = (() => {
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
         // Speed lines
-        Sprites.drawSpeedLines(ctx, GAME_W / 2, 300, 50, 500, 65, 0.1, 1.5);
+        Sprites.drawSpeedLines(ctx, GAME_W / 2, 440, 60, 450, 70, 0.1, 1.5);
 
-        // Panel
-        drawMangaPanel(60, 140, GAME_W - 120, 350, 5);
+        // Panel (large, centered)
+        drawMangaPanel(40, 220, GAME_W - 80, 480, 5);
         ctx.fillStyle = C.paper;
-        ctx.fillRect(65, 145, GAME_W - 130, 340);
+        ctx.fillRect(45, 225, GAME_W - 90, 470);
 
         // Red tint accent
         ctx.fillStyle = C.accentRed;
         ctx.globalAlpha = 0.08;
-        ctx.fillRect(65, 145, GAME_W - 130, 340);
+        ctx.fillRect(45, 225, GAME_W - 90, 470);
         ctx.globalAlpha = 1.0;
 
-        // Title
+        // Title (large)
         ctx.fillStyle = C.accentRed;
-        ctx.font = `58px ${FONT_TITLE}`;
+        ctx.font = `72px ${FONT_TITLE}`;
         ctx.textAlign = 'center';
         ctx.globalAlpha = 0.08;
-        ctx.fillText(I18n.t('caught'), GAME_W / 2 + 3, 302);
+        ctx.fillText(I18n.t('caught'), GAME_W / 2 + 3, 422);
         ctx.globalAlpha = 1.0;
-        ctx.fillText(I18n.t('caught'), GAME_W / 2, 300);
+        ctx.fillText(I18n.t('caught'), GAME_W / 2, 420);
 
         // Underline
         ctx.strokeStyle = C.ink;
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(GAME_W / 2 - 140, 312);
-        ctx.lineTo(GAME_W / 2 + 140, 312);
+        ctx.moveTo(GAME_W / 2 - 160, 436);
+        ctx.lineTo(GAME_W / 2 + 160, 436);
         ctx.stroke();
 
         // Reason
         ctx.fillStyle = C.ink;
-        ctx.font = `19px ${FONT_BODY}`;
+        ctx.font = `24px ${FONT_BODY}`;
         if (reason === 'caught') {
-            ctx.fillText(I18n.t('caughtReasonTeacher'), GAME_W / 2, 355);
+            ctx.fillText(I18n.t('caughtReasonTeacher'), GAME_W / 2, 500);
         } else {
-            ctx.fillText(I18n.t('caughtReasonTime'), GAME_W / 2, 355);
+            ctx.fillText(I18n.t('caughtReasonTime'), GAME_W / 2, 500);
         }
 
         // Anger marks
-        drawAngerMark(ctx, GAME_W / 2 - 190, 230, 12);
-        drawAngerMark(ctx, GAME_W / 2 + 190, 230, 12);
+        drawAngerMark(ctx, GAME_W / 2 - 200, 340, 16);
+        drawAngerMark(ctx, GAME_W / 2 + 200, 340, 16);
 
         // Retry
         if (Math.floor(frame / 30) % 2 === 0) {
             ctx.fillStyle = C.ink;
-            ctx.font = `bold 22px ${FONT_TITLE}`;
-            ctx.fillText(I18n.t('pressSpaceRetry'), GAME_W / 2, 440);
+            ctx.font = `bold 28px ${FONT_TITLE}`;
+            const promptKey = Input.isTouchActive() ? 'touchRetry' : 'pressSpaceRetry';
+            ctx.fillText(I18n.t(promptKey), GAME_W / 2, 630);
         }
 
         ctx.textAlign = 'left';
@@ -829,67 +815,68 @@ const Renderer = (() => {
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
         // Light burst
-        Sprites.drawSpeedLines(ctx, GAME_W / 2, 270, 25, 400, 55, 0.05, 0.8);
+        Sprites.drawSpeedLines(ctx, GAME_W / 2, 400, 30, 420, 60, 0.05, 0.8);
 
-        // Panel
-        drawMangaPanel(60, 110, GAME_W - 120, 400, 5);
+        // Panel (large, centered)
+        drawMangaPanel(40, 190, GAME_W - 80, 520, 5);
         ctx.fillStyle = C.paper;
-        ctx.fillRect(65, 115, GAME_W - 130, 390);
+        ctx.fillRect(45, 195, GAME_W - 90, 510);
 
-        // Flowers
-        Sprites.drawFlower(ctx, 140, 170, 18, 0.5);
-        Sprites.drawFlower(ctx, GAME_W - 140, 170, 15, 0.45);
-        Sprites.drawFlower(ctx, 120, 420, 12, 0.35);
-        Sprites.drawFlower(ctx, GAME_W - 120, 420, 16, 0.45);
-        Sprites.drawFlower(ctx, GAME_W / 2 - 230, 310, 10, 0.3);
-        Sprites.drawFlower(ctx, GAME_W / 2 + 230, 310, 10, 0.3);
+        // Flowers (large)
+        Sprites.drawFlower(ctx, 110, 260, 22, 0.55);
+        Sprites.drawFlower(ctx, GAME_W - 110, 260, 18, 0.5);
+        Sprites.drawFlower(ctx, 90, 610, 16, 0.4);
+        Sprites.drawFlower(ctx, GAME_W - 90, 610, 20, 0.5);
+        Sprites.drawFlower(ctx, GAME_W / 2 - 220, 450, 12, 0.35);
+        Sprites.drawFlower(ctx, GAME_W / 2 + 220, 450, 12, 0.35);
 
-        // Title
+        // Title (large)
         ctx.fillStyle = C.accentGold;
-        ctx.font = `58px ${FONT_TITLE}`;
+        ctx.font = `72px ${FONT_TITLE}`;
         ctx.textAlign = 'center';
         ctx.globalAlpha = 0.08;
-        ctx.fillText(I18n.t('promoted'), GAME_W / 2 + 3, 282);
+        ctx.fillText(I18n.t('promoted'), GAME_W / 2 + 3, 402);
         ctx.globalAlpha = 1.0;
         ctx.fillStyle = C.ink;
-        ctx.fillText(I18n.t('promoted'), GAME_W / 2, 280);
+        ctx.fillText(I18n.t('promoted'), GAME_W / 2, 400);
 
         // Gold underline
         ctx.strokeStyle = C.accentGold;
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(GAME_W / 2 - 150, 292);
-        ctx.lineTo(GAME_W / 2 + 150, 292);
+        ctx.moveTo(GAME_W / 2 - 170, 414);
+        ctx.lineTo(GAME_W / 2 + 170, 414);
         ctx.stroke();
 
         // Win message
         ctx.fillStyle = C.inkSoft;
-        ctx.font = `19px ${FONT_BODY}`;
-        ctx.fillText(I18n.t('winMessage'), GAME_W / 2, 335);
+        ctx.font = `24px ${FONT_BODY}`;
+        ctx.fillText(I18n.t('winMessage'), GAME_W / 2, 475);
 
         // Time left
         ctx.fillStyle = C.ink;
-        ctx.font = `bold 26px ${FONT_UI}`;
-        ctx.fillText(I18n.t('timeLeft') + Math.ceil(timeLeft) + 's', GAME_W / 2, 380);
+        ctx.font = `bold 30px ${FONT_UI}`;
+        ctx.fillText(I18n.t('timeLeft') + Math.ceil(timeLeft) + 's', GAME_W / 2, 530);
 
         // Animated sparkles (colorful!)
-        Sprites.drawSparkles(ctx, GAME_W / 2, 420, 300, frame, 14);
+        Sprites.drawSparkles(ctx, GAME_W / 2, 580, 300, frame, 16);
 
         // Extra sparkle row
-        for (let i = 0; i < 10; i++) {
-            const sx = 120 + i * 80 + Math.sin(frame * 0.05 + i) * 22;
-            const sy = 440 + Math.cos(frame * 0.07 + i * 0.5) * 18;
+        for (let i = 0; i < 8; i++) {
+            const sx = 70 + i * 90 + Math.sin(frame * 0.05 + i) * 25;
+            const sy = 610 + Math.cos(frame * 0.07 + i * 0.5) * 20;
             ctx.fillStyle = i % 3 === 0 ? C.accentGold : i % 3 === 1 ? C.accentPink : C.accentTeal;
             ctx.globalAlpha = 0.35 + Math.sin(frame * 0.08 + i) * 0.15;
-            Sprites.drawSparkle4pt(ctx, sx, sy, 5 + Math.sin(frame * 0.06 + i * 2) * 2.5);
+            Sprites.drawSparkle4pt(ctx, sx, sy, 6 + Math.sin(frame * 0.06 + i * 2) * 3);
         }
         ctx.globalAlpha = 1.0;
 
         // Continue prompt
         if (Math.floor(frame / 30) % 2 === 0) {
             ctx.fillStyle = C.ink;
-            ctx.font = `bold 22px ${FONT_TITLE}`;
-            ctx.fillText(I18n.t('pressSpaceAgain'), GAME_W / 2, 490);
+            ctx.font = `bold 28px ${FONT_TITLE}`;
+            const promptKey = Input.isTouchActive() ? 'touchAgain' : 'pressSpaceAgain';
+            ctx.fillText(I18n.t(promptKey), GAME_W / 2, 680);
         }
 
         ctx.textAlign = 'left';
@@ -940,7 +927,7 @@ const Renderer = (() => {
     function drawTeacherIndicator(teacherState, frame) {
         const C = Sprites.C;
         const barH = 7;
-        const y = 190;
+        const y = 130;
 
         if (teacherState === 'facing_board') {
             ctx.fillStyle = C.green;
