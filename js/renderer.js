@@ -291,7 +291,10 @@ const Renderer = (() => {
     function drawPaperPlane(a, t) {
         const x = a.fromX + (a.toX - a.fromX) * t;
         const y = a.fromY + (a.toY - a.fromY) * t + Math.sin(t * Math.PI) * -120;
-        const angle = Math.atan2(a.toY - a.fromY, a.toX - a.fromX);
+        const dx = a.toX - a.fromX;
+        const dy = a.toY - a.fromY;
+        const travelAngle = Math.atan2(dy, dx);
+        const angle = travelAngle + Math.PI;
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
@@ -687,15 +690,15 @@ const Renderer = (() => {
         const dx = (to.x - from.x);
         const dy = (to.y - from.y);
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
-        Sprites.drawMotionTrail(ctx, nx, noteY - 16, dx / len, dy / len, 24);
+        Sprites.drawMotionTrail(ctx, nx, noteY - 18, dx / len, dy / len, 32);
 
         // Shadow
-        ctx.fillStyle = 'rgba(26, 21, 16, 0.12)';
+        ctx.fillStyle = 'rgba(26, 21, 16, 0.18)';
         ctx.beginPath();
-        ctx.ellipse(nx, ny + 12, 10, 4, 0, 0, Math.PI * 2);
+        ctx.ellipse(nx, ny + 14, 14, 5, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        Sprites.drawNote(ctx, nx, noteY - 16, 24);
+        Sprites.drawNote(ctx, nx, noteY - 18, 34);
     }
 
     // ================================================================
@@ -704,8 +707,8 @@ const Renderer = (() => {
     function drawNoteOnDesk(col, row) {
         const pos = getCellPos(col, row);
         const cx = pos.x + CELL_W / 2 + 20;
-        const cy = pos.y + CELL_H - 38;
-        Sprites.drawNote(ctx, cx, cy, 20);
+        const cy = pos.y + CELL_H - 40;
+        Sprites.drawNote(ctx, cx, cy, 30);
     }
 
     // ================================================================

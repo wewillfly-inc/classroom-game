@@ -1,10 +1,14 @@
 // ============================================================
-// audio.js - Simple Sound Effects using Web Audio API
+// audio.js - Sound Effects & Manga-Inspired Background Music
 // ============================================================
 
 const SFX = (() => {
     let audioCtx = null;
     let enabled = true;
+    let bgmInterval = null;
+    let bgmStarted = false;
+    const BGM_VOLUME = 0.03;
+    const BGM_TEMPO = 0.45;
 
     function init() {
         try {
@@ -19,6 +23,47 @@ const SFX = (() => {
         if (audioCtx && audioCtx.state === 'suspended') {
             audioCtx.resume();
         }
+        if (enabled && audioCtx && !bgmStarted) {
+            startBGM();
+        }
+    }
+
+    function startBGM() {
+        if (!enabled || !audioCtx || bgmStarted) return;
+        bgmStarted = true;
+        const pentatonic = [261.63, 293.66, 329.63, 392, 440, 523.25];
+        let step = 0;
+        function playBGMNote() {
+            if (!audioCtx || audioCtx.state !== 'running') return;
+            const idx = [0, 2, 4, 2, 1, 3, 2, 0][step % 8];
+            const freq = pentatonic[idx] * (step % 16 < 8 ? 1 : 1.25);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 1200;
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(BGM_VOLUME, audioCtx.currentTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + BGM_TEMPO);
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + BGM_TEMPO);
+            step++;
+        }
+        playBGMNote();
+        bgmInterval = setInterval(playBGMNote, BGM_TEMPO * 1000);
+    }
+
+    function stopBGM() {
+        if (bgmInterval) {
+            clearInterval(bgmInterval);
+            bgmInterval = null;
+        }
+        bgmStarted = false;
     }
 
     function playTone(freq, duration, type, volume) {
@@ -106,6 +151,8 @@ const SFX = (() => {
     return {
         init,
         ensureResumed,
+        startBGM,
+        stopBGM,
         playPass,
         playArrive,
         playWarning,

@@ -963,21 +963,22 @@ const Sprites = (() => {
     }
 
     // ================================================================
-    //  NOTE (manga-style folded letter with heart)
+    //  NOTE (manga-style folded letter with heart, bigger and salient)
     // ================================================================
     function drawNote(ctx, x, y, size) {
-        const s = Math.max(1, Math.floor(size / 6));
-        const pw = 8 * s;
-        const ph = 6 * s;
+        const s = Math.max(1, Math.floor(size / 5));
+        const pw = 10 * s;
+        const ph = 8 * s;
 
         // Shadow
-        ctx.fillStyle = 'rgba(26, 21, 16, 0.15)';
-        ctx.fillRect(x - pw / 2 + 2, y - ph / 2 + 2, pw, ph);
+        ctx.fillStyle = 'rgba(26, 21, 16, 0.25)';
+        ctx.fillRect(x - pw / 2 + 3, y - ph / 2 + 3, pw, ph);
 
-        // Paper
-        ctx.fillStyle = '#fffff0';
+        // Paper (brighter, cream-white)
+        ctx.fillStyle = '#fffef5';
         ctx.fillRect(x - pw / 2, y - ph / 2, pw, ph);
-        inkStroke(ctx, 1.2);
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 2;
         ctx.strokeRect(x - pw / 2, y - ph / 2, pw, ph);
 
         // Fold corner
@@ -989,12 +990,13 @@ const Sprites = (() => {
         ctx.lineTo(x + pw / 2, y - ph / 2 + 2 * foldS);
         ctx.closePath();
         ctx.fill();
-        inkStroke(ctx, 0.8);
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 1.2;
         ctx.stroke();
 
-        // Squiggly text lines
-        ctx.strokeStyle = '#7070b0';
-        ctx.lineWidth = 0.8;
+        // Squiggly text lines (bolder)
+        ctx.strokeStyle = '#6050a0';
+        ctx.lineWidth = 1.2;
         const lineGap = Math.max(2, Math.floor(ph / 5));
         for (let i = 0; i < 3; i++) {
             const ly = y - ph / 2 + s + (i + 1) * lineGap;
@@ -1002,22 +1004,25 @@ const Sprites = (() => {
             const lw = pw * (0.5 + Math.sin(i * 1.5) * 0.15);
             ctx.beginPath();
             ctx.moveTo(lx, ly);
-            ctx.quadraticCurveTo(lx + lw * 0.3, ly - 1, lx + lw * 0.5, ly + 0.5);
-            ctx.quadraticCurveTo(lx + lw * 0.7, ly + 1.5, lx + lw, ly);
+            ctx.quadraticCurveTo(lx + lw * 0.3, ly - 1.5, lx + lw * 0.5, ly + 0.5);
+            ctx.quadraticCurveTo(lx + lw * 0.7, ly + 2, lx + lw, ly);
             ctx.stroke();
         }
 
-        // Heart
-        if (size >= 16) {
+        // Heart (vivid pink/red)
+        if (size >= 12) {
             ctx.fillStyle = C.accentPink;
-            ctx.globalAlpha = 0.7;
-            const hx = x + pw / 2 - 3.5 * s;
-            const hy = y + ph / 2 - 2.5 * s;
+            ctx.strokeStyle = '#b03050';
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.95;
+            const hx = x + pw / 2 - 4 * s;
+            const hy = y + ph / 2 - 3 * s;
             ctx.beginPath();
-            ctx.moveTo(hx, hy + 1.5);
-            ctx.bezierCurveTo(hx - 3, hy - 2, hx - 5, hy + 1, hx, hy + 4);
-            ctx.bezierCurveTo(hx + 5, hy + 1, hx + 3, hy - 2, hx, hy + 1.5);
+            ctx.moveTo(hx, hy + 2);
+            ctx.bezierCurveTo(hx - 4, hy - 2.5, hx - 6, hy + 1.5, hx, hy + 5);
+            ctx.bezierCurveTo(hx + 6, hy + 1.5, hx + 4, hy - 2.5, hx, hy + 2);
             ctx.fill();
+            ctx.stroke();
             ctx.globalAlpha = 1.0;
         }
     }
