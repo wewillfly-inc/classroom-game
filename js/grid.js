@@ -314,6 +314,25 @@ const Grid = (() => {
         return { col: noteCol, row: noteRow };
     }
 
+    // Returns adjacent cells that can receive the note (writing students)
+    function getValidPassTargets() {
+        const targets = [];
+        const dirs = [
+            { dc: 0, dr: -1 },
+            { dc: 0, dr: 1 },
+            { dc: -1, dr: 0 },
+            { dc: 1, dr: 0 },
+        ];
+        for (const { dc, dr } of dirs) {
+            const nc = noteCol + dc;
+            const nr = noteRow + dr;
+            if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS && grid[nr][nc].state === 'writing') {
+                targets.push({ col: nc, row: nr, dc, dr });
+            }
+        }
+        return targets;
+    }
+
     function getTransitInfo() {
         return {
             fromCol: transitFromCol,
@@ -341,6 +360,7 @@ const Grid = (() => {
         isNoteInTransit,
         isNoteAtDunce,
         getNotePos,
+        getValidPassTargets,
         getTransitInfo,
         getGrid,
         getCols,

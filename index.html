@@ -92,10 +92,8 @@
             cursor: default;
         }
 
-        /* Show controls on touch devices */
-        body.has-touch #touchControls {
-            display: flex;
-        }
+        /* D-pad hidden on touch devices: mobile uses touch-to-select students instead */
+        /* body.has-touch keeps back button etc.; touchControls stays display:none */
 
         /* ---- Mobile back-to-settings button ---- */
         #backToSettings {

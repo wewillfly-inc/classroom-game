@@ -152,12 +152,12 @@ const Sprites = (() => {
         if (patternsCtx === ctx) return;
         patternsCtx = ctx;
 
-        // Generic screentones
-        patterns.dotLight   = createDotPattern(ctx, 0.8, 6, C.inkLight, C.paper);
-        patterns.dotMedium  = createDotPattern(ctx, 1.0, 5, C.inkSoft, C.paper);
-        patterns.dotDark    = createDotPattern(ctx, 1.2, 4, C.ink, C.paperDark);
-        patterns.crossLight = createCrossHatchPattern(ctx, 0.4, 6, C.inkLight, C.paper);
-        patterns.crossDark  = createCrossHatchPattern(ctx, 0.5, 5, C.inkSoft, C.paperDark);
+        // Generic screentones (modern: slightly lighter, less dense)
+        patterns.dotLight   = createDotPattern(ctx, 0.7, 7, C.inkLight, C.paper);
+        patterns.dotMedium  = createDotPattern(ctx, 0.9, 6, C.inkSoft, C.paper);
+        patterns.dotDark    = createDotPattern(ctx, 1.0, 5, C.ink, C.paperDark);
+        patterns.crossLight = createCrossHatchPattern(ctx, 0.35, 7, C.inkLight, C.paper);
+        patterns.crossDark  = createCrossHatchPattern(ctx, 0.4, 6, C.inkSoft, C.paperDark);
 
         // Colored shirt patterns (manga screentone + color)
         patterns.shirtBlue    = createDotPattern(ctx, 0.7, 5, C.shirtBlueDk, C.shirtBlue);
@@ -213,10 +213,10 @@ const Sprites = (() => {
         };
     }
 
-    // ---- Helpers ----
+    // ---- Helpers (modern manga: slightly finer lines) ----
     function inkStroke(ctx, width) {
         ctx.strokeStyle = C.ink;
-        ctx.lineWidth = width || 1.5;
+        ctx.lineWidth = width !== undefined ? width : 1.2;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
     }
@@ -292,23 +292,9 @@ const Sprites = (() => {
         const s = SPRITE_SCALE;
         const cx = x + w / 2;
         const app = studentAppearance(col, row);
-        const animPhase = Math.floor(frame / 30) % 2;
-        const armOff = animPhase === 0 ? 0 : s;
+        const armOff = Math.sin(frame * 0.12) * s * 0.6;
 
-        // Exercise sheet on desk
-        ctx.fillStyle = C.white;
-        ctx.fillRect(cx - 4 * s, y + h - 19 * s, 8 * s, 5 * s);
-        inkStroke(ctx, 0.5);
-        ctx.strokeRect(cx - 4 * s, y + h - 19 * s, 8 * s, 5 * s);
-        // Pencil lines on paper
-        ctx.strokeStyle = C.inkLight;
-        ctx.lineWidth = 0.5;
-        for (let i = 1; i <= 3; i++) {
-            ctx.beginPath();
-            ctx.moveTo(cx - 3 * s, y + h - (18.5 - i) * s);
-            ctx.lineTo(cx + 2 * s, y + h - (18.5 - i) * s);
-            ctx.stroke();
-        }
+        // Students face teacher; we see only their backs, no visible desk contents
 
         // Body / torso (colored shirt with screentone)
         ctx.fillStyle = patterns[app.shirtPattern] || app.shirtSolid.main;
@@ -333,56 +319,27 @@ const Sprites = (() => {
         ctx.lineTo(cx + 2 * s, y + h - 26 * s);
         ctx.stroke();
 
-        // Arms
+        // Arms reaching forward toward desk/teacher (we see shoulders and upper arms from behind)
         ctx.fillStyle = app.shirtSolid.main;
-        // Left arm
+        // Left arm: from shoulder forward (toward top of screen)
         ctx.beginPath();
         ctx.moveTo(cx - 5 * s, y + h - 24 * s);
-        ctx.quadraticCurveTo(cx - 7 * s, y + h - 22 * s, cx - 7 * s, y + h - 19 * s);
-        ctx.lineTo(cx - 5.5 * s, y + h - 19 * s);
-        ctx.quadraticCurveTo(cx - 5.5 * s, y + h - 22 * s, cx - 4 * s, y + h - 24 * s);
+        ctx.quadraticCurveTo(cx - 6 * s, y + h - 20 * s, cx - 3 * s, y + h - 17 * s);
+        ctx.lineTo(cx - 2.5 * s, y + h - 17.5 * s);
+        ctx.quadraticCurveTo(cx - 4 * s, y + h - 20 * s, cx - 4.5 * s, y + h - 23 * s);
         ctx.closePath();
         ctx.fill();
         inkStroke(ctx, 1.2);
         ctx.stroke();
-        // Right arm (animated)
-        ctx.fillStyle = app.shirtSolid.main;
+        // Right arm (slight writing motion)
         ctx.beginPath();
         ctx.moveTo(cx + 5 * s, y + h - 24 * s);
-        ctx.quadraticCurveTo(cx + 7 * s, y + h - 22 * s, cx + 5 * s + armOff, y + h - 19 * s);
-        ctx.lineTo(cx + 4 * s + armOff, y + h - 19 * s);
-        ctx.quadraticCurveTo(cx + 5.5 * s, y + h - 22 * s, cx + 4 * s, y + h - 24 * s);
+        ctx.quadraticCurveTo(cx + 6 * s, y + h - 20 * s, cx + 3 * s + armOff * 0.5, y + h - 17 * s);
+        ctx.lineTo(cx + 2.5 * s + armOff * 0.5, y + h - 17.5 * s);
+        ctx.quadraticCurveTo(cx + 4 * s, y + h - 20 * s, cx + 4.5 * s, y + h - 23 * s);
         ctx.closePath();
         ctx.fill();
         inkStroke(ctx, 1.2);
-        ctx.stroke();
-
-        // Hands
-        ctx.fillStyle = C.skin;
-        ctx.beginPath();
-        ctx.arc(cx - 6.5 * s, y + h - 18.5 * s, 1.8 * s, 0, Math.PI * 2);
-        ctx.fill();
-        inkStroke(ctx, 0.8);
-        ctx.stroke();
-        ctx.fillStyle = C.skin;
-        ctx.beginPath();
-        ctx.arc(cx + 5 * s + armOff, y + h - 18.5 * s, 1.8 * s, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        // Pencil
-        ctx.strokeStyle = C.accentGold;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(cx + 5 * s + armOff, y + h - 20 * s);
-        ctx.lineTo(cx + 5 * s + armOff + s, y + h - 17 * s);
-        ctx.stroke();
-        // Pencil tip
-        ctx.strokeStyle = C.ink;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(cx + 5 * s + armOff + s, y + h - 17.5 * s);
-        ctx.lineTo(cx + 5 * s + armOff + s * 0.5, y + h - 16.5 * s);
         ctx.stroke();
 
         // Neck
@@ -410,119 +367,105 @@ const Sprites = (() => {
         ctx.fill();
         ctx.stroke();
 
-        // Hair strands (manga flowing lines, varied by style)
-        inkStroke(ctx, 1);
-        const hairLen = app.hairStyle === 2 ? 3 : (app.hairStyle === 3 ? 8 : (app.hairStyle === 1 ? 7 : 6));
-        for (let i = -2; i <= 2; i++) {
-            ctx.beginPath();
-            ctx.moveTo(cx + i * 2 * s, y + h - 35 * s);
-            if (app.hairStyle === 1) {
-                // Wavy
-                ctx.bezierCurveTo(
-                    cx + (i * 2 + 1.5) * s, y + h - 32 * s,
-                    cx + (i * 2 - 1.5) * s, y + h - 29 * s,
-                    cx + i * 2.5 * s, y + h - (35 - hairLen) * s + hairLen * s
-                );
-            } else if (app.hairStyle === 3) {
-                // Ponytail: strands converge to one side
-                ctx.quadraticCurveTo(
-                    cx + (i + 3) * 2 * s, y + h - 28 * s,
-                    cx + 6 * s, y + h - (35 - hairLen) * s + hairLen * s
-                );
-            } else {
-                // Straight flowing
-                ctx.quadraticCurveTo(
-                    cx + i * 2.5 * s, y + h - 30 * s,
-                    cx + i * 2.2 * s, y + h - (35 - hairLen) * s + hairLen * s
-                );
-            }
-            ctx.stroke();
-        }
-
-        // Ponytail ribbon
+        // Hair (back view, filled shapes, high definition)
+        ctx.fillStyle = app.hair;
+        inkStroke(ctx, 1.2);
         if (app.hairStyle === 3) {
+            // Ponytail: filled shape
+            ctx.beginPath();
+            ctx.moveTo(cx - 3 * s, y + h - 28 * s);
+            ctx.quadraticCurveTo(cx + 2 * s, y + h - 25 * s, cx + 5 * s, y + h - 20 * s);
+            ctx.quadraticCurveTo(cx + 4 * s, y + h - 8 * s, cx + 2 * s, y + h - 2 * s);
+            ctx.quadraticCurveTo(cx - 1 * s, y + h - 5 * s, cx - 3 * s, y + h - 28 * s);
+            ctx.fill();
+            ctx.stroke();
             ctx.fillStyle = C.accentRed;
             ctx.beginPath();
-            ctx.arc(cx + 6 * s, y + h - 27 * s, 1.5 * s, 0, Math.PI * 2);
+            ctx.arc(cx + 4 * s, y + h - 22 * s, 1.2 * s, 0, Math.PI * 2);
             ctx.fill();
-            inkStroke(ctx, 0.6);
+            inkStroke(ctx, 0.5);
             ctx.stroke();
+        } else {
+            // Filled hair locks (no single lines)
+            const n = app.hairStyle === 2 ? 3 : 5;
+            const divisor = Math.max(1, n - 1);
+            const lockW = app.hairStyle === 2 ? 2.2 * s : 1.8 * s;
+            const len = app.hairStyle === 2 ? 5 * s : 9 * s;
+            for (let i = 0; i < n; i++) {
+                const ox = (i / divisor - 0.5) * 7 * s;
+                ctx.fillStyle = app.hair;
+                ctx.beginPath();
+                ctx.moveTo(cx + ox - lockW / 2, y + h - 32 * s);
+                ctx.quadraticCurveTo(cx + ox - lockW / 2, y + h - 28 * s, cx + ox - lockW * 0.6, y + h - 32 * s + len);
+                ctx.lineTo(cx + ox + lockW * 0.6, y + h - 32 * s + len);
+                ctx.quadraticCurveTo(cx + ox + lockW / 2, y + h - 28 * s, cx + ox + lockW / 2, y + h - 32 * s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
         }
-
-        // Hair highlight shine
-        ctx.strokeStyle = C.white;
-        ctx.lineWidth = 1.2;
-        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
         ctx.beginPath();
-        ctx.moveTo(cx - 1 * s, y + h - 34 * s);
-        ctx.quadraticCurveTo(cx, y + h - 31 * s, cx + s, y + h - 28 * s);
-        ctx.stroke();
-        ctx.globalAlpha = 1.0;
+        ctx.ellipse(cx - 1.5 * s, y + h - 31 * s, 2 * s, 1.2 * s, -0.3, 0, Math.PI * 2);
+        ctx.fill();
     }
 
     // ================================================================
-    //  STUDENT SLEEPING (colorful manga)
+    //  STUDENT SLEEPING (face toward desk/teacher, we see back of head)
     // ================================================================
     function drawStudentSleeping(ctx, x, y, w, h, col, row, frame) {
         const s = SPRITE_SCALE;
         const cx = x + w / 2;
         const app = studentAppearance(col, row);
 
-        // Body slumped forward
+        // Body slumped forward toward desk
         ctx.fillStyle = patterns[app.shirtPattern] || app.shirtSolid.main;
         ctx.beginPath();
         ctx.moveTo(cx - 5 * s, y + h - 18 * s);
-        ctx.lineTo(cx - 5 * s, y + h - 23 * s);
-        ctx.quadraticCurveTo(cx, y + h - 25 * s, cx + 5 * s, y + h - 23 * s);
+        ctx.lineTo(cx - 5 * s, y + h - 24 * s);
+        ctx.quadraticCurveTo(cx, y + h - 26 * s, cx + 5 * s, y + h - 24 * s);
         ctx.lineTo(cx + 5 * s, y + h - 18 * s);
         ctx.closePath();
         ctx.fill();
         inkStroke(ctx, 1.5);
         ctx.stroke();
 
-        // Arms splayed
+        // Arms folded on desk in front (toward teacher)
         ctx.fillStyle = app.shirtSolid.main;
-        inkStroke(ctx, 1.5);
+        inkStroke(ctx, 1.2);
         ctx.beginPath();
-        ctx.moveTo(cx - 5 * s, y + h - 22 * s);
-        ctx.quadraticCurveTo(cx - 8 * s, y + h - 20 * s, cx - 8 * s, y + h - 19 * s);
+        ctx.moveTo(cx - 5 * s, y + h - 23 * s);
+        ctx.quadraticCurveTo(cx - 2 * s, y + h - 19 * s, cx, y + h - 17 * s);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(cx + 5 * s, y + h - 22 * s);
-        ctx.quadraticCurveTo(cx + 8 * s, y + h - 20 * s, cx + 8 * s, y + h - 19 * s);
-        ctx.stroke();
-
-        // Hands
-        ctx.fillStyle = C.skin;
-        ctx.beginPath();
-        ctx.arc(cx - 8 * s, y + h - 18.5 * s, 1.5 * s, 0, Math.PI * 2);
-        ctx.fill();
-        inkStroke(ctx, 0.8);
-        ctx.stroke();
-        ctx.fillStyle = C.skin;
-        ctx.beginPath();
-        ctx.arc(cx + 8 * s, y + h - 18.5 * s, 1.5 * s, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(cx + 5 * s, y + h - 23 * s);
+        ctx.quadraticCurveTo(cx + 2 * s, y + h - 19 * s, cx, y + h - 17 * s);
         ctx.stroke();
 
-        // Head face-down (hair spread)
+        // Head resting on arms, face toward desk (we see crown/back of head)
         ctx.fillStyle = app.hair;
         ctx.beginPath();
-        ctx.ellipse(cx, y + h - 22 * s, 6 * s, 4 * s, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx, y + h - 24 * s, 5.5 * s, 4 * s, 0.15, 0, Math.PI * 2);
         ctx.fill();
         inkStroke(ctx, 1.5);
         ctx.stroke();
-
-        // Hair spread detail
-        inkStroke(ctx, 0.8);
-        for (let i = -2; i <= 2; i++) {
+        // Hair locks (filled, back of head)
+        const lockW = 1.5 * s;
+        for (let i = -1; i <= 1; i++) {
+            const ox = i * 2.5 * s;
+            ctx.fillStyle = app.hair;
             ctx.beginPath();
-            ctx.moveTo(cx + i * 2 * s, y + h - 25 * s);
-            ctx.quadraticCurveTo(cx + i * 3 * s, y + h - 22 * s, cx + i * 3 * s, y + h - 19 * s);
+            ctx.moveTo(cx + ox - lockW / 2, y + h - 26 * s);
+            ctx.quadraticCurveTo(cx + ox - lockW / 2, y + h - 22 * s, cx + ox - lockW * 0.5, y + h - 16 * s);
+            ctx.lineTo(cx + ox + lockW * 0.5, y + h - 16 * s);
+            ctx.quadraticCurveTo(cx + ox + lockW / 2, y + h - 22 * s, cx + ox + lockW / 2, y + h - 26 * s);
+            ctx.closePath();
+            ctx.fill();
+            inkStroke(ctx, 0.8);
             ctx.stroke();
         }
 
-        drawSleepBubble(ctx, cx, y + h - 30 * s, frame);
+        drawSleepBubble(ctx, cx, y + h - 32 * s, frame);
     }
 
     // ================================================================

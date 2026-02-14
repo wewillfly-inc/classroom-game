@@ -7,13 +7,13 @@ const Renderer = (() => {
     const GAME_W = 768;
     const GAME_H = 1024;
 
-    // Layout constants (compact top area to maximize grid)
-    const BOARD_Y = 10;
-    const BOARD_H = 55;
-    const BOARD_W = 250;
+    // Layout constants (larger teacher/board for better visibility)
+    const BOARD_Y = 5;
+    const BOARD_H = 88;
+    const BOARD_W = 380;
 
-    const TEACHER_W = 60;
-    const TEACHER_H = 100;
+    const TEACHER_W = 92;
+    const TEACHER_H = 155;
 
     // Dynamic grid layout
     let GRID_COLS = 4;
@@ -21,16 +21,21 @@ const Renderer = (() => {
     let CELL_W = 150;
     let CELL_H = 170;
     let GRID_START_X = 10;
-    let GRID_START_Y = 140;
+    let GRID_START_Y = 195;
 
     let canvas, ctx;
     let scale = 1;
     let offsetX = 0, offsetY = 0;
 
-    // Manga fonts
+    // Ambient animations (paper plane, gum pop)
+    let ambientAnimations = [];
+    let lastAmbientSpawn = 0;
+    let nextAmbientSpawnIn = 12;
+
+    // Manga fonts (modern: Bangers for punch, clean sans for body)
     const FONT_TITLE = "'Bangers', Impact, sans-serif";
-    const FONT_BODY = "Georgia, 'Times New Roman', serif";
-    const FONT_UI = "'Segoe UI', Arial, sans-serif";
+    const FONT_BODY = "'Segoe UI', 'Helvetica Neue', Arial, sans-serif";
+    const FONT_UI = "'Segoe UI', 'Helvetica Neue', Arial, sans-serif";
 
     function init(canvasEl) {
         canvas = canvasEl;
@@ -44,15 +49,15 @@ const Renderer = (() => {
         GRID_COLS = cols;
         GRID_ROWS = rows;
 
-        // Use nearly the full canvas (small margins)
-        const maxGridW = GAME_W - 16;       // 8px margin each side
-        const maxGridH = GAME_H - 140 - 15; // below compact top area, 15px bottom margin
+        // Use nearly the full canvas (top area ~195px for teacher/board)
+        const maxGridW = GAME_W - 16;
+        const maxGridH = GAME_H - 195 - 15;
 
         CELL_W = Math.min(152, Math.floor(maxGridW / cols));
         CELL_H = Math.min(170, Math.floor(maxGridH / rows));
 
         GRID_START_X = Math.floor((GAME_W - cols * CELL_W) / 2);
-        GRID_START_Y = 140;
+        GRID_START_Y = 195;
     }
 
     function resize() {
@@ -101,6 +106,62 @@ const Renderer = (() => {
         return { x: pos.x + CELL_W / 2, y: pos.y + CELL_H / 2 };
     }
 
+    // Convert screen coords to game coords
+    function screenToGame(clientX, clientY) {
+        if (!canvas) return null;
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: ((clientX - rect.left) / rect.width) * GAME_W,
+            y: ((clientY - rect.top) / rect.height) * GAME_H,
+        };
+    }
+
+    // Convert screen coords to grid cell (for touch hit detection)
+    function screenToCell(clientX, clientY) {
+        const g = screenToGame(clientX, clientY);
+        if (!g) return null;
+        const col = Math.floor((g.x - GRID_START_X) / CELL_W);
+        const row = Math.floor((g.y - GRID_START_Y) / CELL_H);
+        if (col >= 0 && col < GRID_COLS && row >= 0 && row < GRID_ROWS) {
+            return { col, row };
+        }
+        return null;
+    }
+
+    // Hit detection for settings screen (option boxes + PLAY button)
+    function getSettingsHit(clientX, clientY) {
+        const g = screenToGame(clientX, clientY);
+        if (!g) return null;
+        const x = g.x, y = g.y;
+
+        const spacing = 220;
+        const startX = GAME_W / 2 - spacing;
+        const boxW = 165;
+        const boxH = 95;
+        const rows = [
+            { y: 270, type: 'gridOption' },
+            { y: 500, type: 'timeOption' },
+            { y: 730, type: 'sleepOption' },
+        ];
+        for (const row of rows) {
+            const by = row.y - boxH / 2;
+            for (let i = 0; i < 3; i++) {
+                const bx = startX + i * spacing - boxW / 2;
+                if (x >= bx && x <= bx + boxW && y >= by && y <= by + boxH) {
+                    return { type: row.type, index: i };
+                }
+            }
+        }
+        const playX = GAME_W / 2 - 100;
+        const playY = 900;
+        const playW = 200;
+        const playH = 65;
+        if (x >= playX && x <= playX + playW && y >= playY && y <= playY + playH) {
+            return { type: 'play' };
+        }
+        return null;
+    }
+
     // ================================================================
     //  BACKGROUND (colorful manga classroom)
     // ================================================================
@@ -112,45 +173,290 @@ const Renderer = (() => {
         ctx.fillStyle = C.paper;
         ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-        // Floor with warm wood screentone (starts right below compact wall)
+        const WALL_H = 195;
+        // Floor with warm wood screentone (starts right below wall)
         ctx.fillStyle = P.floor || C.floorWood;
-        ctx.fillRect(0, 130, GAME_W, GAME_H - 130);
+        ctx.fillRect(0, WALL_H, GAME_W, GAME_H - WALL_H);
 
         // Floor board lines
         ctx.strokeStyle = C.floorWoodDk;
         ctx.lineWidth = 0.5;
-        for (let fy = 140; fy < GAME_H; fy += 35) {
+        for (let fy = WALL_H + 10; fy < GAME_H; fy += 35) {
             ctx.beginPath();
             ctx.moveTo(0, fy);
             ctx.lineTo(GAME_W, fy);
             ctx.stroke();
         }
 
-        // Back wall (warm cream) - compact
+        // Back wall (warm cream) - compact, accommodates larger teacher/board
         ctx.fillStyle = P.wallTone || C.wallCream;
-        ctx.fillRect(0, 0, GAME_W, 130);
+        ctx.fillRect(0, 0, GAME_W, WALL_H);
 
         // Wall-floor border
         ctx.strokeStyle = C.ink;
         ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(0, 130);
-        ctx.lineTo(GAME_W, 130);
+        ctx.moveTo(0, WALL_H);
+        ctx.lineTo(GAME_W, WALL_H);
         ctx.stroke();
 
         // Wainscoting (thin)
         ctx.fillStyle = C.wallCreamDk;
-        ctx.fillRect(0, 112, GAME_W, 18);
+        ctx.fillRect(0, WALL_H - 18, GAME_W, 18);
         ctx.strokeStyle = C.inkSoft;
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(0, 112); ctx.lineTo(GAME_W, 112); ctx.stroke();
+        ctx.moveTo(0, WALL_H - 18); ctx.lineTo(GAME_W, WALL_H - 18); ctx.stroke();
 
         // Clock (upper right of wall)
-        drawMangaClock(GAME_W - 60, 40);
+        drawMangaClock(GAME_W - 55, 50);
 
-        // Poster (upper left of wall)
-        drawMangaPoster(30, 20, 45, 60);
+        // ABC poster (upper left)
+        drawMangaPoster(25, 18, 42, 55);
+
+        // Solar system map (left of blackboard)
+        drawSolarSystemMap(85, 22, 75, 85);
+
+        // Formulas poster (right of blackboard)
+        drawFormulasPoster(GAME_W - 175, 22, 75, 85);
+    }
+
+    function updateAndDrawAmbient(state) {
+        if (state !== 'playing') return;
+        const now = performance.now() / 1000;
+        if (lastAmbientSpawn === 0) lastAmbientSpawn = now;
+        if (now - lastAmbientSpawn >= nextAmbientSpawnIn) {
+            lastAmbientSpawn = now;
+            nextAmbientSpawnIn = 4 + Math.random() * 5;
+            if (Math.random() < 0.5) {
+                const fromX = Math.random() < 0.5 ? -20 : GAME_W + 20;
+                const fromY = 200 + Math.random() * 400;
+                const toX = fromX > GAME_W / 2 ? -30 : GAME_W + 30;
+                const toY = fromY + (Math.random() - 0.5) * 200;
+                ambientAnimations.push({
+                    type: 'plane',
+                    startTime: now,
+                    duration: 2.2,
+                    fromX, fromY, toX, toY,
+                });
+            } else {
+                let gx = 0, gy = 0;
+                if (typeof Grid !== 'undefined' && Grid.getGrid && Grid.getCols && Grid.getRows) {
+                    const grid = Grid.getGrid();
+                    const cols = Grid.getCols();
+                    const rows = Grid.getRows();
+                    const writing = [];
+                    for (let r = 0; r < rows; r++) {
+                        for (let c = 0; c < cols; c++) {
+                            if (grid[r] && grid[r][c] && grid[r][c].state === 'writing') {
+                                writing.push({ c, r });
+                            }
+                        }
+                    }
+                    if (writing.length > 0) {
+                        const cell = writing[Math.floor(Math.random() * writing.length)];
+                        const pos = getCellPos(cell.c, cell.r);
+                        gx = pos.x + CELL_W / 2 + (Math.random() - 0.5) * 24;
+                        gy = pos.y + 50 + (Math.random() - 0.5) * 20;
+                    } else {
+                        gx = 100 + Math.random() * (GAME_W - 200);
+                        gy = 300 + Math.random() * (GAME_H - 500);
+                    }
+                } else {
+                    gx = 100 + Math.random() * (GAME_W - 200);
+                    gy = 300 + Math.random() * (GAME_H - 500);
+                }
+                ambientAnimations.push({
+                    type: 'gum',
+                    startTime: now,
+                    duration: 1.2,
+                    x: gx,
+                    y: gy,
+                    soundPlayed: false,
+                });
+            }
+        }
+        ambientAnimations = ambientAnimations.filter((a) => {
+            const elapsed = now - a.startTime;
+            if (elapsed >= a.duration) return false;
+            if (a.type === 'plane') {
+                drawPaperPlane(a, elapsed / a.duration);
+            } else {
+                drawGumPop(a, elapsed / a.duration);
+            }
+            return true;
+        });
+    }
+
+    function drawPaperPlane(a, t) {
+        const x = a.fromX + (a.toX - a.fromX) * t;
+        const y = a.fromY + (a.toY - a.fromY) * t + Math.sin(t * Math.PI) * -120;
+        const angle = Math.atan2(a.toY - a.fromY, a.toX - a.fromX);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.globalAlpha = 0.9 - t * 0.4;
+
+        const C = Sprites.C;
+        const sc = 1.2;
+
+        // Main body (filled, high-def)
+        ctx.fillStyle = 'rgba(255,252,245,0.98)';
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(-24 * sc, 0);
+        ctx.lineTo(18 * sc, -8 * sc);
+        ctx.lineTo(18 * sc, 0);
+        ctx.lineTo(18 * sc, 8 * sc);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Nose fold (center crease)
+        ctx.strokeStyle = 'rgba(26,21,16,0.35)';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(-24 * sc, 0);
+        ctx.lineTo(18 * sc, 0);
+        ctx.stroke();
+
+        // Left wing fold line
+        ctx.beginPath();
+        ctx.moveTo(-8 * sc, -2 * sc);
+        ctx.lineTo(12 * sc, -6 * sc);
+        ctx.stroke();
+        // Right wing fold line
+        ctx.beginPath();
+        ctx.moveTo(-8 * sc, 2 * sc);
+        ctx.lineTo(12 * sc, 6 * sc);
+        ctx.stroke();
+
+        // Wing crease accents
+        ctx.strokeStyle = 'rgba(26,21,16,0.2)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(-4 * sc, -4 * sc);
+        ctx.lineTo(8 * sc, -5 * sc);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-4 * sc, 4 * sc);
+        ctx.lineTo(8 * sc, 5 * sc);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    function drawGumPop(a, t) {
+        const C = Sprites.C;
+        ctx.save();
+        ctx.translate(a.x, a.y);
+
+        if (t < 0.55) {
+            // Phase 1: bubble inflates (realistic gum bubble)
+            const inflate = t / 0.55;
+            const r = 4 + inflate * inflate * 22;
+            const stretchY = 1 + inflate * 0.4;
+            ctx.globalAlpha = 0.6 + inflate * 0.3;
+            ctx.fillStyle = 'rgba(255,200,220,0.5)';
+            ctx.strokeStyle = 'rgba(200,120,140,0.9)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, r, r * stretchY, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            // Shine
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.beginPath();
+            ctx.ellipse(-r * 0.3, -r * 0.3, r * 0.25, r * 0.15, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Phase 2: pop (burst + sound)
+            if (!a.soundPlayed && typeof SFX !== 'undefined' && SFX.playGumPop) {
+                a.soundPlayed = true;
+                SFX.ensureResumed();
+                SFX.playGumPop();
+            }
+            const popT = (t - 0.55) / 0.45;
+            const burst = Math.min(1, popT * 2);
+            const fade = 1 - popT;
+            ctx.globalAlpha = fade;
+            ctx.strokeStyle = C.accentPink;
+            ctx.lineWidth = 2;
+            ctx.fillStyle = 'rgba(255,180,200,0.2)';
+            const r = 12 + burst * 18;
+            const spikes = 12;
+            ctx.beginPath();
+            for (let i = 0; i < spikes; i++) {
+                const ang = (i / spikes) * Math.PI * 2;
+                ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    function drawSolarSystemMap(x, y, w, h) {
+        const C = Sprites.C;
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x, y, w, h);
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        ctx.fillStyle = '#f0e080';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = C.inkLight;
+        ctx.lineWidth = 0.8;
+        ctx.globalAlpha = 0.6;
+        for (let r = 14; r < Math.min(w, h) / 2 - 4; r += 12) {
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, r * 1.2, r * 0.5, 0, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        const planets = [
+            { a: 0.2, r: 14, col: '#b87050' },
+            { a: 1.8, r: 26, col: '#e8c060' },
+            { a: 3.2, r: 38, col: '#6088c0' },
+            { a: 4.5, r: 50, col: '#c05050' },
+        ];
+        planets.forEach((p) => {
+            const px = cx + Math.cos(p.a) * p.r * 1.2;
+            const py = cy + Math.sin(p.a) * p.r * 0.5;
+            ctx.fillStyle = p.col;
+            ctx.beginPath();
+            ctx.arc(px, py, 3, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        ctx.fillStyle = C.chalk;
+        ctx.font = `10px ${FONT_BODY}`;
+        ctx.textAlign = 'center';
+        ctx.fillText('SISTEMA', cx, y + h - 8);
+        ctx.textAlign = 'left';
+    }
+
+    function drawFormulasPoster(x, y, w, h) {
+        const C = Sprites.C;
+        ctx.fillStyle = '#2a3035';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x, y, w, h);
+        ctx.fillStyle = C.chalk;
+        ctx.globalAlpha = 0.9;
+        ctx.font = `12px ${FONT_BODY}`;
+        ctx.textAlign = 'left';
+        ctx.fillText('a\u00B2+b\u00B2=c\u00B2', x + 8, y + 28);
+        ctx.fillText('E=mc\u00B2', x + 8, y + 48);
+        ctx.fillText('2\u03C0r', x + 8, y + 68);
+        ctx.globalAlpha = 1;
+        ctx.textAlign = 'left';
     }
 
     // Colorful window with blue sky
@@ -344,6 +650,21 @@ const Renderer = (() => {
                     const hx = pos.x + CELL_W / 2 - 26;
                     const hy = pos.y + CELL_H - 50;
                     Sprites.drawHighlight(ctx, hx, hy, 52, 46, frame);
+                }
+
+                // Selection square on passable students (desktop and mobile)
+                if (typeof Game !== 'undefined' && Game.getState && Game.getState() === 'playing' &&
+                    typeof Grid !== 'undefined' && Grid.isNoteInTransit && !Grid.isNoteInTransit()) {
+                    const targets = Grid.getValidPassTargets ? Grid.getValidPassTargets() : [];
+                    const isTarget = targets.some(t => t.col === col && t.row === row);
+                    if (isTarget) {
+                        const pad = 2;
+                        ctx.fillStyle = 'rgba(212,160,48,0.15)';
+                        ctx.fillRect(pos.x + pad, pos.y + pad, CELL_W - pad * 2, CELL_H - pad * 2);
+                        ctx.strokeStyle = Sprites.C.accentGold;
+                        ctx.lineWidth = 4;
+                        ctx.strokeRect(pos.x + pad, pos.y + pad, CELL_W - pad * 2, CELL_H - pad * 2);
+                    }
                 }
             }
         }
@@ -647,19 +968,38 @@ const Renderer = (() => {
         ctx.fillText(I18n.t('sleepers'), GAME_W / 2, rowY3 - 72);
         drawOptionRow(sleepLabels, sleepDescs, sleepChoice, rowY3, settingsRow === 2, frame);
 
-        // Nav hint
-        ctx.fillStyle = C.inkLight;
-        ctx.font = `17px ${FONT_UI}`;
-        ctx.fillText(I18n.t('navHint'), GAME_W / 2, 870);
-
-        // Start prompt
-        if (Math.floor(frame / 30) % 2 === 0) {
-            ctx.fillStyle = C.ink;
-            ctx.font = `bold 30px ${FONT_TITLE}`;
-            const promptKey = Input.isTouchActive() ? 'touchPlay' : 'pressSpacePlay';
-            ctx.fillText(I18n.t(promptKey), GAME_W / 2, 950);
+        // Nav hint (desktop only)
+        if (!Input.isTouchActive()) {
+            ctx.fillStyle = C.inkLight;
+            ctx.font = `17px ${FONT_UI}`;
+            ctx.fillText(I18n.t('navHint'), GAME_W / 2, 870);
         }
 
+        // PLAY button (manga-styled, tappable on mobile)
+        const playX = GAME_W / 2 - 100;
+        const playY = 900;
+        const playW = 200;
+        const playH = 65;
+        const playPulse = 0.92 + Math.sin(frame * 0.08) * 0.08;
+        ctx.globalAlpha = playPulse;
+        ctx.fillStyle = C.accentGold;
+        Sprites.roundRectPath(ctx, playX, playY, playW, playH, 12);
+        ctx.fill();
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = C.ink;
+        ctx.font = `bold 32px ${FONT_TITLE}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(I18n.t('play'), GAME_W / 2, playY + playH / 2);
+        if (!Input.isTouchActive()) {
+            ctx.fillStyle = C.inkLight;
+            ctx.font = `14px ${FONT_UI}`;
+            ctx.fillText(I18n.t('pressSpacePlay'), GAME_W / 2, 990);
+        }
+        ctx.textBaseline = 'alphabetic';
         ctx.textAlign = 'left';
     }
 
@@ -914,9 +1254,9 @@ const Renderer = (() => {
         const textAlpha = 0.5 + Math.sin(frame * 0.2) * 0.3;
         ctx.globalAlpha = textAlpha;
         ctx.fillStyle = C.accentRed;
-        ctx.font = `bold 16px ${FONT_TITLE}`;
+        ctx.font = `bold 48px ${FONT_TITLE}`;
         ctx.textAlign = 'center';
-        ctx.fillText(I18n.t('teacherWatching'), GAME_W / 2, GAME_H - 18);
+        ctx.fillText(I18n.t('teacherWatching'), GAME_W / 2, GAME_H - 28);
         ctx.textAlign = 'left';
         ctx.globalAlpha = 1.0;
     }
@@ -927,7 +1267,7 @@ const Renderer = (() => {
     function drawTeacherIndicator(teacherState, frame) {
         const C = Sprites.C;
         const barH = 7;
-        const y = 130;
+        const y = 188;
 
         if (teacherState === 'facing_board') {
             ctx.fillStyle = C.green;
@@ -973,7 +1313,10 @@ const Renderer = (() => {
         getCtx,
         getCellPos,
         getCellCenter,
+        screenToCell,
+        getSettingsHit,
         drawBackground,
+        updateAndDrawAmbient,
         drawBlackboard,
         drawTeacher,
         drawGrid,

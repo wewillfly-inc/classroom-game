@@ -156,22 +156,46 @@ const Input = (() => {
         });
     }
 
-    // Tapping anywhere on the canvas acts as Space (OK / confirm)
+    // Canvas tap: on mobile, touch-to-select for gameplay; Space simulation for other states
     function initCanvasTap() {
         const canvas = document.getElementById('gameCanvas');
         if (!canvas) return;
 
         canvas.addEventListener('pointerdown', (e) => {
-            // Only respond on touch devices
             if (!isTouchDevice) return;
             e.preventDefault();
-            if (!keys[' ']) {
-                justPressed[' '] = true;
-            }
-            keys[' '] = true;
 
             if (typeof SFX !== 'undefined' && SFX.ensureResumed) {
                 SFX.ensureResumed();
+            }
+
+            const state = (typeof Game !== 'undefined' && Game.getState) ? Game.getState() : '';
+            const playing = state === 'playing';
+            const noteInTransit = (typeof Grid !== 'undefined' && Grid.isNoteInTransit) ? Grid.isNoteInTransit() : false;
+
+            if (playing && !noteInTransit && typeof Renderer !== 'undefined' && Renderer.screenToCell) {
+                const cell = Renderer.screenToCell(e.clientX, e.clientY);
+                if (cell && typeof Grid !== 'undefined' && Grid.getValidPassTargets) {
+                    const targets = Grid.getValidPassTargets();
+                    const hit = targets.find(t => t.col === cell.col && t.row === cell.row);
+                    if (hit) {
+                        Grid.tryPass(hit.dc, hit.dr);
+                        return;
+                    }
+                }
+            }
+
+            if (state === 'settings' && typeof Renderer !== 'undefined' && Renderer.getSettingsHit) {
+                const hit = Renderer.getSettingsHit(e.clientX, e.clientY);
+                if (hit && typeof Game !== 'undefined' && Game.handleSettingsTouch) {
+                    Game.handleSettingsTouch(hit);
+                    return;
+                }
+                return; // mobile settings: only PLAY/option taps work
+            }
+            if (state === 'title' || state === 'gameover' || state === 'win') {
+                if (!keys[' ']) justPressed[' '] = true;
+                keys[' '] = true;
             }
         });
 
@@ -220,6 +244,11 @@ const Input = (() => {
         return isTouchDevice;
     }
 
+    // True only on actual phones/tablets (pointer: coarse, hover: none)
+    function isRealTouchDevice() {
+        return window.matchMedia('(pointer: coarse) and (hover: none)').matches;
+    }
+
     // Show / hide the back button depending on game state and touch mode
     function updateBackButton(gameState) {
         const btn = document.getElementById('backToSettings');
@@ -236,6 +265,7 @@ const Input = (() => {
         getArrowDirection,
         wasSpacePressed,
         isTouchActive,
+        isRealTouchDevice,
         updateBackButton,
     };
 })();

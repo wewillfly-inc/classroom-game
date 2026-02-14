@@ -157,6 +157,25 @@ const Game = (() => {
         }
     }
 
+    // Handle touch on settings screen (option tap or PLAY button)
+    function handleSettingsTouch(hit) {
+        if (!hit) return;
+        if (hit.type === 'play') {
+            startGame();
+            return;
+        }
+        if (hit.type === 'gridOption') {
+            gridChoice = hit.index;
+            settingsRow = 0;
+        } else if (hit.type === 'timeOption') {
+            timeChoice = hit.index;
+            settingsRow = 1;
+        } else if (hit.type === 'sleepOption') {
+            sleepChoice = hit.index;
+            settingsRow = 2;
+        }
+    }
+
     function updatePlaying(dt) {
         // Update timer
         timeLeft -= dt;
@@ -251,6 +270,7 @@ const Game = (() => {
                 Renderer.drawWinScreen(timeLeft, frame);
                 break;
         }
+        Renderer.updateAndDrawAmbient(state);
     }
 
     function renderPlaying() {
@@ -351,5 +371,6 @@ const Game = (() => {
         getFrame,
         getTimeLeft,
         goToSettings,
+        handleSettingsTouch,
     };
 })();

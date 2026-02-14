@@ -96,6 +96,13 @@ const SFX = (() => {
         setTimeout(() => playTone(500, 0.15, 'square', 0.1), 200);
     }
 
+    // Bubble gum pop
+    function playGumPop() {
+        playTone(1200, 0.05, 'sine', 0.08);
+        setTimeout(() => playTone(800, 0.08, 'sine', 0.06), 30);
+        setTimeout(() => playTone(400, 0.1, 'sine', 0.04), 80);
+    }
+
     return {
         init,
         ensureResumed,
@@ -108,5 +115,6 @@ const SFX = (() => {
         playWin,
         playBlocked,
         playStart,
+        playGumPop,
     };
 })();
